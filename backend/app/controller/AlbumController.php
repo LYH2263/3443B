@@ -9,6 +9,8 @@ use app\model\AccessLog;
 use app\model\MemberLevel;
 use app\model\User;
 use app\model\AbExperiment;
+use app\model\Tag;
+use app\model\AlbumTag;
 use think\facade\Log;
 use think\facade\Validate;
 use think\Request;
@@ -132,6 +134,9 @@ class AlbumController
             return json_error('画册不存在', 404);
         }
 
+        $tagIds = AlbumTag::where('album_id', $id)->column('tag_id');
+        $album->album_tags = !empty($tagIds) ? Tag::whereIn('id', $tagIds)->select() : [];
+
         $album->cover_image_url = $album->cover_image ? get_upload_url($album->cover_image) : '';
         $album->background_image_url = $album->background_image ? get_upload_url($album->background_image) : '';
         $album->qrcode_image_url = $album->qrcode_image ? get_upload_url($album->qrcode_image) : '';
@@ -251,6 +256,7 @@ class AlbumController
                 'bgm_audio_url'        => $album->bgm_audio && $album->bgm_enabled ? get_upload_url($album->bgm_audio) : '',
                 'bgm_volume'           => $album->bgm_volume,
                 'bgm_enabled'          => $album->bgm_enabled,
+                'tags'                 => $this->getAlbumTagsList($id),
             ],
             'pages' => $pages,
         ]);
@@ -364,5 +370,14 @@ class AlbumController
             ->select();
 
         return json_success($list);
+    }
+
+    private function getAlbumTagsList($albumId)
+    {
+        $tagIds = AlbumTag::where('album_id', $albumId)->column('tag_id');
+        if (empty($tagIds)) {
+            return [];
+        }
+        return Tag::whereIn('id', $tagIds)->select()->toArray();
     }
 }

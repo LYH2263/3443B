@@ -124,6 +124,9 @@ const api = {
         },
         verifyPassword: (id, password) => apiRequest(`/public/albums/${id}/verify`, { method: 'POST', body: { password } }),
         categories: () => apiRequest('/public/categories'),
+        tagCloud: () => apiRequest('/public/tags/cloud'),
+        albumsByTag: (params) => apiRequest('/public/tags/albums?' + new URLSearchParams(params)),
+        albumRecommend: (id, limit) => apiRequest(`/public/albums/${id}/recommend?limit=${limit || 6}`),
         abExperiments: () => apiRequest('/public/ab-experiments'),
         abAssign: (data) => apiRequest('/public/ab-experiments/assign', { method: 'POST', body: data }),
         abExposure: (data) => apiRequest('/public/ab-experiments/exposure', { method: 'POST', body: data }),
@@ -173,6 +176,12 @@ const api = {
         generateShortLink: (data) => apiRequest('/admin/short-links/generate', { method: 'POST', body: data }),
         updateShortLink: (id, data) => apiRequest(`/admin/short-links/${id}`, { method: 'PUT', body: data }),
         deleteShortLink: (id) => apiRequest(`/admin/short-links/${id}`, { method: 'DELETE' }),
+
+        tags: (params) => apiRequest('/admin/tags?' + new URLSearchParams(params || {})),
+        tagAutocomplete: (q) => apiRequest('/admin/tags/autocomplete?q=' + encodeURIComponent(q)),
+        deleteTag: (id) => apiRequest(`/admin/tags/${id}`, { method: 'DELETE' }),
+        albumTags: (albumId) => apiRequest(`/admin/albums/${albumId}/tags`),
+        syncAlbumTags: (albumId, tags) => apiRequest(`/admin/albums/${albumId}/tags`, { method: 'PUT', body: { tags } }),
     },
     upload: {
         image: async (file, type = 'albums') => {

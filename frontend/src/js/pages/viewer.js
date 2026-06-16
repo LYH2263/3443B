@@ -1,4 +1,4 @@
-let viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false, audioManager: null, hasAudio: false };
+let viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false, audioManager: null, hasAudio: false, recommendations: [] };
 
 function renderViewerPage(id) {
     return `
@@ -36,6 +36,10 @@ function renderViewerPage(id) {
                 <button id="audio-mute-btn" class="audio-mute-btn" onclick="toggleAudioMute()" title="静音/播放">
                     <span id="audio-icon">&#128266;</span>
                 </button>
+            </div>
+            <div id="recommendations-section" class="recommendations-section" style="display:none">
+                <h3 class="recommendations-title">&#128218; 相关推荐</h3>
+                <div class="recommendations-grid" id="recommendations-grid"></div>
             </div>
         </div>
     `;
@@ -114,6 +118,8 @@ function setupViewerAudio(data) {
     
     document.getElementById('viewer-controls').style.display = 'flex';
     
+    loadRecommendations(viewerState.album.id);
+
     setTimeout(() => {
         initFlipbook();
     }, 100);
@@ -146,7 +152,7 @@ function playPageNarration(pageNumber) {
 }
 
 async function initViewerPage(id) {
-    viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false, audioManager: null, hasAudio: false };
+    viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false, audioManager: null, hasAudio: false, recommendations: [] };
 
     const assignment = getAbAssignment(id);
     if (assignment) {
@@ -266,6 +272,51 @@ function toggleFullscreen() {
     } else {
         document.exitFullscreen();
     }
+}
+
+async function loadRecommendations(albumId) {
+    try {
+        const res = await api.public.albumRecommend(albumId, 6);
+        viewerState.recommendations = res.data || [];
+        renderRecommendations();
+    } catch (e) {
+        viewerState.recommendations = [];
+    }
+}
+
+function renderRecommendations() {
+    const section = document.getElementById('recommendations-section');
+    const grid = document.getElementById('recommendations-grid');
+    if (!section || !grid) return;
+
+    if (viewerState.recommendations.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    grid.innerHTML = viewerState.recommendations.map(rec => {
+        const coverUrl = rec.cover_image_url ? getImageUrl(rec.cover_image_url) : getPlaceholderImage();
+        const tags = (rec.tags || []).slice(0, 3).map(t =>
+            `<span class="rec-tag">${escapeHtml(t.name)}</span>`
+        ).join('');
+
+        return `
+            <div class="rec-card" onclick="window.location.hash='#/viewer/${rec.id}'">
+                <div class="rec-card-image">
+                    <img src="${coverUrl}" alt="${escapeHtml(rec.title)}" onerror="this.src='${getPlaceholderImage()}'">
+                </div>
+                <div class="rec-card-body">
+                    <div class="rec-card-title">${escapeHtml(rec.title)}</div>
+                    <div class="rec-card-meta">
+                        <span>&#128065; ${rec.view_count || 0}</span>
+                        <span>&#128196; ${rec.page_count || 0}页</span>
+                    </div>
+                    ${tags ? `<div class="rec-card-tags">${tags}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 window.addEventListener('resize', debounce(() => {

@@ -38,4 +38,9 @@ class Album extends Model
     {
         return $this->belongsTo(User::class, 'creator_id', 'id');
     }
+
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class, 'album_tag', 'album_id', 'tag_id');
+    }
 }

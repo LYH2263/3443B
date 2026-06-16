@@ -1,4 +1,4 @@
-let homeState = { albums: [], categories: [], page: 1, total: 0, limit: 12, categoryId: '', keyword: '', abAssignments: {} };
+let homeState = { albums: [], categories: [], page: 1, total: 0, limit: 12, categoryId: '', keyword: '', abAssignments: {}, tagCloud: [], activeTagId: null };
 
 function renderHomePage() {
     return `
@@ -15,6 +15,7 @@ function renderHomePage() {
                 </div>
             </section>
             <div id="category-bar"></div>
+            <div id="tag-cloud-section"></div>
             <div class="albums-container">
                 <div id="albums-list">${renderLoading()}</div>
                 <div id="albums-pagination"></div>
@@ -26,9 +27,16 @@ function renderHomePage() {
 
 async function initHomePage() {
     try {
-        const catRes = await api.public.categories();
+        const [catRes] = await Promise.all([
+            api.public.categories(),
+        ]);
         homeState.categories = catRes.data || [];
         renderCategoryBar();
+    } catch (e) {}
+    try {
+        const tagRes = await api.public.tagCloud();
+        homeState.tagCloud = tagRes.data || [];
+        renderTagCloud();
     } catch (e) {}
     loadHomeAlbums();
 }
@@ -47,8 +55,10 @@ function renderCategoryBar() {
 
 function filterCategory(id) {
     homeState.categoryId = id;
+    homeState.activeTagId = null;
     homeState.page = 1;
     renderCategoryBar();
+    renderTagCloud();
     loadHomeAlbums();
 }
 
@@ -56,6 +66,59 @@ function searchAlbums() {
     const input = document.getElementById('home-search');
     homeState.keyword = input ? input.value.trim() : '';
     homeState.page = 1;
+    homeState.activeTagId = null;
+    renderTagCloud();
+    loadHomeAlbums();
+}
+
+function renderTagCloud() {
+    const section = document.getElementById('tag-cloud-section');
+    if (!section) return;
+
+    if (homeState.tagCloud.length === 0) {
+        section.innerHTML = '';
+        return;
+    }
+
+    let html = '<div class="tag-cloud-container">';
+    html += '<h3 class="tag-cloud-title">热门标签</h3>';
+    html += '<div class="tag-cloud">';
+    homeState.tagCloud.forEach(tag => {
+        const isActive = homeState.activeTagId === tag.id;
+        const fontSize = Math.max(12, Math.min(32, tag.weight * 0.28 + 12));
+        html += `<span class="tag-cloud-item ${isActive ? 'tag-cloud-item-active' : ''}" 
+            style="font-size:${fontSize}px"
+            onclick="filterByTag(${tag.id}, '${escapeHtml(tag.name)}')">${escapeHtml(tag.name)}</span>`;
+    });
+    html += '</div>';
+    if (homeState.activeTagId) {
+        html += `<div class="tag-cloud-active-info">
+            <span>按标签筛选：<strong>${escapeHtml(homeState.tagCloud.find(t => t.id === homeState.activeTagId)?.name || '')}</strong></span>
+            <button class="btn btn-sm btn-secondary" onclick="clearTagFilter()">&#10005; 清除筛选</button>
+        </div>`;
+    }
+    html += '</div>';
+    section.innerHTML = html;
+}
+
+function filterByTag(tagId, tagName) {
+    if (homeState.activeTagId === tagId) {
+        clearTagFilter();
+        return;
+    }
+    homeState.activeTagId = tagId;
+    homeState.categoryId = '';
+    homeState.keyword = '';
+    homeState.page = 1;
+    renderCategoryBar();
+    renderTagCloud();
+    loadHomeAlbums();
+}
+
+function clearTagFilter() {
+    homeState.activeTagId = null;
+    homeState.page = 1;
+    renderTagCloud();
     loadHomeAlbums();
 }
 
@@ -66,11 +129,18 @@ async function loadHomeAlbums() {
     listEl.innerHTML = renderLoading();
 
     try {
-        const params = { page: homeState.page, limit: homeState.limit };
-        if (homeState.categoryId) params.category_id = homeState.categoryId;
-        if (homeState.keyword) params.keyword = homeState.keyword;
+        let res;
 
-        const res = await api.public.albums(params);
+        if (homeState.activeTagId) {
+            const params = { tag_id: homeState.activeTagId, page: homeState.page, limit: homeState.limit };
+            res = await api.public.albumsByTag(params);
+        } else {
+            const params = { page: homeState.page, limit: homeState.limit };
+            if (homeState.categoryId) params.category_id = homeState.categoryId;
+            if (homeState.keyword) params.keyword = homeState.keyword;
+            res = await api.public.albums(params);
+        }
+
         homeState.albums = res.data.list || [];
         homeState.total = res.data.total || 0;
 

@@ -37,6 +37,9 @@ Route::group('api/public', function () {
     Route::post('albums/:id/verify', 'AlbumController@publicDetail');
     Route::get('albums', 'AlbumController@publicList');
     Route::get('categories', 'AlbumController@categories');
+    Route::get('tags/cloud', 'TagController@cloud');
+    Route::get('tags/albums', 'TagController@publicAlbumsByTag');
+    Route::get('albums/:id/recommend', 'TagController@recommend')->pattern(['id' => '\d+']);
     Route::get('ab-experiments', 'AbExperimentController@publicExperiments');
     Route::post('ab-experiments/assign', 'AbExperimentController@assign');
     Route::post('ab-experiments/exposure', 'AbExperimentController@recordExposure');
@@ -115,4 +118,12 @@ Route::group('api/admin', function () {
     Route::post('short-links/generate', 'ShortLinkController@generate');
     Route::put('short-links/:id', 'ShortLinkController@update')->pattern(['id' => '\d+']);
     Route::delete('short-links/:id', 'ShortLinkController@delete')->pattern(['id' => '\d+']);
+
+    // Tags
+    Route::get('tags', 'TagController@index');
+    Route::get('tags/autocomplete', 'TagController@autocomplete');
+    Route::get('tags/:id', 'TagController@index');
+    Route::delete('tags/:id', 'TagController@delete')->pattern(['id' => '\d+']);
+    Route::get('albums/:albumId/tags', 'TagController@getAlbumTags')->pattern(['albumId' => '\d+']);
+    Route::put('albums/:albumId/tags', 'TagController@syncAlbumTags')->pattern(['albumId' => '\d+']);
 })->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AdminMiddleware::class]);

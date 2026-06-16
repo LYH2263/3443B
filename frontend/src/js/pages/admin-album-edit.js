@@ -1,4 +1,4 @@
-let editAlbumState = { album: null, categories: [], levels: [], backgrounds: [], pages: [], isNew: true, previewAudio: null, abExperiment: null };
+let editAlbumState = { album: null, categories: [], levels: [], backgrounds: [], pages: [], isNew: true, previewAudio: null, abExperiment: null, tags: [], tagSuggestions: [] };
 
 function renderAdminAlbumEdit(id) {
     editAlbumState.isNew = !id;
@@ -30,6 +30,7 @@ async function initAdminAlbumEdit(id) {
             editAlbumState.album = albumRes.data;
             editAlbumState.pages = albumRes.data.pages || [];
             editAlbumState.abExperiment = albumRes.data.ab_experiment || null;
+            editAlbumState.tags = (albumRes.data.album_tags || []).map(t => t.name);
         } else {
             editAlbumState.album = {
                 title: '', description: '', cover_image: '', background_image: '',
@@ -39,6 +40,7 @@ async function initAdminAlbumEdit(id) {
                 sort_order: 0
             };
             editAlbumState.pages = [];
+            editAlbumState.tags = [];
         }
 
         renderAlbumEditForm(id);
@@ -157,6 +159,31 @@ function renderAlbumEditForm(id) {
                         </div>
                     </div>
             </div>
+
+                <div class="card" style="margin-bottom:24px">
+                    <div class="card-header"><h2>&#127991; 标签</h2></div>
+                    <div class="card-body">
+                        <div class="tag-input-wrapper" id="tag-input-wrapper">
+                            <div class="tag-list" id="tag-list">
+                                ${editAlbumState.tags.map((tag, i) => `
+                                    <span class="tag-item">
+                                        ${escapeHtml(tag)}
+                                        <span class="tag-remove" onclick="removeAlbumTag(${i})">&times;</span>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            <div style="position:relative">
+                                <input type="text" class="form-input tag-input" id="tag-input"
+                                    placeholder="输入标签，回车添加..."
+                                    onkeydown="handleTagKeydown(event)"
+                                    oninput="handleTagInput(event)"
+                                    autocomplete="off">
+                                <div class="tag-suggestions" id="tag-suggestions" style="display:none"></div>
+                            </div>
+                        </div>
+                        <p style="font-size:12px;color:var(--gray-400);margin-top:8px">最多20个标签，回车或逗号添加，支持从已有标签自动补全</p>
+                    </div>
+                </div>
 
                 ${id ? renderAbExperimentCard(id, a) : ''}
 
@@ -404,6 +431,7 @@ async function saveAlbum(id) {
     try {
         if (id) {
             await api.admin.updateAlbum(id, data);
+            await saveAlbumTags(id);
             showToast('画册更新成功', 'success');
             window._albumCoverPath = null;
             window._albumBgPath = null;
@@ -993,7 +1021,7 @@ async function quickGenerateShortLink(albumId) {
                             &#10004; 生成成功！短码：<strong>${escapeHtml(res.data.short_code)}</strong>
                         </p>
                         <div style="display:flex;gap:8px">
-                            <input type="text" class="form-input" style="flex:1;font-size:13px" 
+                            <input type="text" class="form-input" style="flex:1;font-size:13px"
                                    value="${escapeHtml(res.data.short_url)}" readonly>
                             <button class="btn btn-sm btn-primary" onclick="copyShortLink('${escapeHtml(res.data.short_url)}')">
                                 复制
@@ -1012,3 +1040,154 @@ async function quickGenerateShortLink(albumId) {
         }
     }
 }
+
+let _tagSuggestTimer = null;
+
+function handleTagKeydown(event) {
+    const input = event.target;
+    const val = input.value.trim();
+
+    if (event.key === 'Enter' || event.key === ',') {
+        event.preventDefault();
+        if (val) {
+            addAlbumTag(val);
+            input.value = '';
+            hideTagSuggestions();
+        }
+    } else if (event.key === 'Backspace' && !val && editAlbumState.tags.length > 0) {
+        removeAlbumTag(editAlbumState.tags.length - 1);
+    } else if (event.key === 'Escape') {
+        hideTagSuggestions();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        navigateTagSuggestions(event.key === 'ArrowDown' ? 1 : -1);
+    } else if (event.key === 'Tab') {
+        const suggestions = document.querySelectorAll('.tag-suggestion-item.active');
+        if (suggestions.length > 0) {
+            event.preventDefault();
+            suggestions[0].click();
+        }
+    }
+}
+
+async function handleTagInput(event) {
+    const input = event.target;
+    const val = input.value.trim();
+
+    clearTimeout(_tagSuggestTimer);
+
+    if (!val) {
+        hideTagSuggestions();
+        return;
+    }
+
+    _tagSuggestTimer = setTimeout(async () => {
+        try {
+            const res = await api.admin.tagAutocomplete(val);
+            const suggestions = (res.data || []).filter(s =>
+                !editAlbumState.tags.some(t => t.toLowerCase().replace(/\s+/g, '') === s.slug)
+            );
+            if (suggestions.length > 0) {
+                showTagSuggestions(suggestions);
+            } else {
+                hideTagSuggestions();
+            }
+        } catch (e) {
+            hideTagSuggestions();
+        }
+    }, 300);
+}
+
+function showTagSuggestions(suggestions) {
+    const container = document.getElementById('tag-suggestions');
+    if (!container) return;
+
+    container.innerHTML = suggestions.map((s, i) => `
+        <div class="tag-suggestion-item" data-index="${i}" data-name="${escapeHtml(s.name)}"
+            onclick="selectTagSuggestion('${escapeHtml(s.name)}')">
+            <span>${escapeHtml(s.name)}</span>
+            <span style="font-size:11px;color:var(--gray-400)">${s.use_count}次使用</span>
+        </div>
+    `).join('');
+    container.style.display = 'block';
+    editAlbumState.tagSuggestions = suggestions;
+}
+
+function hideTagSuggestions() {
+    const container = document.getElementById('tag-suggestions');
+    if (container) container.style.display = 'none';
+    editAlbumState.tagSuggestions = [];
+}
+
+function navigateTagSuggestions(direction) {
+    const items = document.querySelectorAll('.tag-suggestion-item');
+    if (!items.length) return;
+
+    let activeIdx = -1;
+    items.forEach((item, i) => {
+        if (item.classList.contains('active')) activeIdx = i;
+        item.classList.remove('active');
+    });
+
+    activeIdx += direction;
+    if (activeIdx < 0) activeIdx = items.length - 1;
+    if (activeIdx >= items.length) activeIdx = 0;
+
+    items[activeIdx].classList.add('active');
+}
+
+function selectTagSuggestion(name) {
+    addAlbumTag(name);
+    const input = document.getElementById('tag-input');
+    if (input) input.value = '';
+    hideTagSuggestions();
+}
+
+function addAlbumTag(name) {
+    name = name.trim().replace(/,/g, '');
+    if (!name) return;
+
+    const normalized = name.toLowerCase().replace(/\s+/g, '');
+    const exists = editAlbumState.tags.some(t => t.toLowerCase().replace(/\s+/g, '') === normalized);
+    if (exists) {
+        showToast('标签已存在', 'warning');
+        return;
+    }
+
+    if (editAlbumState.tags.length >= 20) {
+        showToast('标签数量已达上限（20个）', 'warning');
+        return;
+    }
+
+    editAlbumState.tags.push(name);
+    renderTagList();
+}
+
+function removeAlbumTag(index) {
+    editAlbumState.tags.splice(index, 1);
+    renderTagList();
+}
+
+function renderTagList() {
+    const container = document.getElementById('tag-list');
+    if (!container) return;
+
+    container.innerHTML = editAlbumState.tags.map((tag, i) => `
+        <span class="tag-item">
+            ${escapeHtml(tag)}
+            <span class="tag-remove" onclick="removeAlbumTag(${i})">&times;</span>
+        </span>
+    `).join('');
+}
+
+async function saveAlbumTags(albumId) {
+    if (!albumId) return;
+    await api.admin.syncAlbumTags(albumId, editAlbumState.tags);
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.tag-input-wrapper')) {
+        const container = document.getElementById('tag-suggestions');
+        if (container) container.style.display = 'none';
+    }
+});
