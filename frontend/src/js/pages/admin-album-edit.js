@@ -248,7 +248,31 @@ function renderAlbumEditForm(id) {
                         </div>
                         ${id ? `<button class="btn btn-secondary" onclick="generateQrcode(${id})" style="width:100%;margin-bottom:16px" id="qr-gen-btn">&#128290; 生成二维码</button>` : '<p style="font-size:13px;color:var(--gray-400)">请先保存画册后生成二维码</p>'}
                         <div id="qrcode-preview">${qrcodePreview}</div>
-                        <hr style="margin:20px 0;border:none;border-top:1px solid var(--gray-200)">
+                    </div>
+                </div>
+
+                ${id ? `
+                <div class="card" style="margin-bottom:24px">
+                    <div class="card-header"><h2>&#128279; 短链管理</h2></div>
+                    <div class="card-body">
+                        <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">
+                            生成简短易记的短链接，便于线下传播和渠道投放统计
+                        </p>
+                        <div style="display:grid;gap:8px">
+                            <button class="btn btn-primary" onclick="navigateTo('/admin/short-links/${id}')" style="width:100%">
+                                &#128279; 管理短链
+                            </button>
+                            <button class="btn btn-secondary" onclick="quickGenerateShortLink(${id})" style="width:100%" id="quick-gen-shortlink-btn">
+                                &#9889; 快速生成短链
+                            </button>
+                        </div>
+                        <div id="quick-shortlink-result" style="margin-top:16px;display:none"></div>
+                    </div>
+                </div>
+                ` : ''}
+
+                <div class="card">
+                    <div class="card-body">
                         <button class="btn btn-primary btn-lg" onclick="saveAlbum(${id || 'null'})" style="width:100%" id="save-album-btn">
                             ${id ? '&#128190; 保存修改' : '&#43; 创建画册'}
                         </button>
@@ -944,4 +968,47 @@ async function deleteAbExperiment(expId, albumId) {
             initAdminAlbumEdit(albumId);
         } catch (e) {}
     });
+}
+
+async function quickGenerateShortLink(albumId) {
+    const btn = document.getElementById('quick-gen-shortlink-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '&#8987; 生成中...';
+    }
+
+    try {
+        const res = await api.admin.generateShortLink({
+            album_id: albumId,
+            remark: '快速生成',
+        });
+
+        if (res.data && res.data.short_url) {
+            const resultEl = document.getElementById('quick-shortlink-result');
+            if (resultEl) {
+                resultEl.style.display = 'block';
+                resultEl.innerHTML = `
+                    <div style="background:var(--gray-50);padding:12px;border-radius:8px">
+                        <p style="font-size:12px;color:var(--gray-500);margin-bottom:8px">
+                            &#10004; 生成成功！短码：<strong>${escapeHtml(res.data.short_code)}</strong>
+                        </p>
+                        <div style="display:flex;gap:8px">
+                            <input type="text" class="form-input" style="flex:1;font-size:13px" 
+                                   value="${escapeHtml(res.data.short_url)}" readonly>
+                            <button class="btn btn-sm btn-primary" onclick="copyShortLink('${escapeHtml(res.data.short_url)}')">
+                                复制
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            showToast('短链生成成功', 'success');
+        }
+    } catch (e) {
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '&#9889; 快速生成短链';
+        }
+    }
 }

@@ -2,6 +2,11 @@
 
 use think\facade\Route;
 
+// Short link redirect (public)
+Route::get('s/:shortCode', 'app\controller\ShortLinkRedirectController@redirect')
+    ->pattern(['shortCode' => '[a-zA-Z0-9_]{4,16}'])
+    ->middleware(\app\middleware\CorsMiddleware::class);
+
 // CORS preflight
 Route::options('api/:any', function () {
     return response('', 204);
@@ -102,4 +107,12 @@ Route::group('api/admin', function () {
     Route::post('ab-experiments/:id/force-adopt', 'AbExperimentController@forceAdopt');
     Route::post('ab-experiments/:id/reset', 'AbExperimentController@reset');
     Route::delete('ab-experiments/:id', 'AbExperimentController@delete');
+
+    // Short Links
+    Route::get('short-links/all-stats', 'ShortLinkController@allStats');
+    Route::get('short-links/stats', 'ShortLinkController@stats');
+    Route::get('short-links', 'ShortLinkController@index');
+    Route::post('short-links/generate', 'ShortLinkController@generate');
+    Route::put('short-links/:id', 'ShortLinkController@update')->pattern(['id' => '\d+']);
+    Route::delete('short-links/:id', 'ShortLinkController@delete')->pattern(['id' => '\d+']);
 })->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AdminMiddleware::class]);

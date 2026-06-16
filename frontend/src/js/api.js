@@ -166,6 +166,13 @@ const api = {
         forceAdoptAbExperiment: (id, data) => apiRequest(`/admin/ab-experiments/${id}/force-adopt`, { method: 'POST', body: data }),
         resetAbExperiment: (id) => apiRequest(`/admin/ab-experiments/${id}/reset`, { method: 'POST' }),
         deleteAbExperiment: (id) => apiRequest(`/admin/ab-experiments/${id}`, { method: 'DELETE' }),
+
+        shortLinks: (params) => apiRequest('/admin/short-links?' + new URLSearchParams(params || {})),
+        shortLinksAllStats: (params) => apiRequest('/admin/short-links/all-stats?' + new URLSearchParams(params || {})),
+        shortLinksStats: (params) => apiRequest('/admin/short-links/stats?' + new URLSearchParams(params || {})),
+        generateShortLink: (data) => apiRequest('/admin/short-links/generate', { method: 'POST', body: data }),
+        updateShortLink: (id, data) => apiRequest(`/admin/short-links/${id}`, { method: 'PUT', body: data }),
+        deleteShortLink: (id) => apiRequest(`/admin/short-links/${id}`, { method: 'DELETE' }),
     },
     upload: {
         image: async (file, type = 'albums') => {

@@ -32,6 +32,9 @@ function renderAdminLayout(activePage, content) {
                         <a href="#/admin/ab-experiments" class="admin-nav-item ${activePage === 'ab-experiments' ? 'active' : ''}">
                             &#128302; A/B 实验
                         </a>
+                        <a href="#/admin/short-links" class="admin-nav-item ${activePage === 'short-links' ? 'active' : ''}">
+                            &#128279; 短链管理
+                        </a>
                         <a href="#/admin/categories" class="admin-nav-item ${activePage === 'categories' ? 'active' : ''}">
                             &#128193; 分类管理
                         </a>

@@ -65,3 +65,50 @@ function get_upload_url(string $path): string
     }
     return '/uploads/' . ltrim($path, '/');
 }
+
+function generate_short_code(int $length = 6): string
+{
+    $chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
+    $charLength = strlen($chars);
+    $code = '';
+    for ($i = 0; $i < $length; $i++) {
+        $code .= $chars[random_int(0, $charLength - 1)];
+    }
+    return $code;
+}
+
+function create_unique_short_code(int $maxRetries = 10, int $length = 6): string
+{
+    $existingLength = $length;
+    for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
+        $code = generate_short_code($existingLength);
+        $exists = \app\model\ShortLink::where('short_code', $code)->find();
+        if (!$exists) {
+            return $code;
+        }
+        if ($attempt >= 5 && $existingLength < 10) {
+            $existingLength++;
+        }
+    }
+    $code = generate_short_code($length + 2) . '_' . time();
+    return substr($code, 0, 16);
+}
+
+function is_valid_short_click(string $ip, int $shortLinkId, int $windowSeconds = 5): bool
+{
+    $threshold = date('Y-m-d H:i:s', time() - $windowSeconds);
+    $count = \app\model\ShortLinkClick::where('short_link_id', $shortLinkId)
+        ->where('ip', $ip)
+        ->where('created_at', '>=', $threshold)
+        ->count();
+    return $count === 0;
+}
+
+function get_short_link_url(string $shortCode): string
+{
+    $baseUrl = env('SHORT_LINK_BASE_URL', '');
+    if (empty($baseUrl)) {
+        $baseUrl = request()->domain();
+    }
+    return rtrim($baseUrl, '/') . '/s/' . $shortCode;
+}

@@ -9,6 +9,8 @@ const routes = {
     '/admin/albums/create': { render: () => renderAdminAlbumEdit(null), init: () => initAdminAlbumEdit(null), auth: true, admin: true },
     '/admin/albums/edit/:id': { render: renderAdminAlbumEdit, init: initAdminAlbumEdit, auth: true, admin: true },
     '/admin/ab-experiments': { render: renderAdminAbExperiments, init: initAdminAbExperiments, auth: true, admin: true },
+    '/admin/short-links': { render: () => renderAdminShortLinks(null), init: () => initAdminShortLinks(null), auth: true, admin: true },
+    '/admin/short-links/:albumId': { render: renderAdminShortLinks, init: initAdminShortLinks, auth: true, admin: true },
     '/admin/users': { render: renderAdminUsers, init: initAdminUsers, auth: true, admin: true },
     '/admin/levels': { render: renderAdminLevels, init: initAdminLevels, auth: true, admin: true },
     '/admin/categories': { render: renderAdminCategories, init: initAdminCategories, auth: true, admin: true },
