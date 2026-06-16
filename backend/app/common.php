@@ -112,3 +112,33 @@ function get_short_link_url(string $shortCode): string
     }
     return rtrim($baseUrl, '/') . '/s/' . $shortCode;
 }
+
+function get_share_link_url(string $token): string
+{
+    $baseUrl = env('SHARE_LINK_BASE_URL', '');
+    if (empty($baseUrl)) {
+        $baseUrl = request()->domain();
+    }
+    return rtrim($baseUrl, '/') . '/share/' . $token;
+}
+
+function calculate_expire_at(?string $duration): ?string
+{
+    if ($duration === null || $duration === 'permanent') {
+        return null;
+    }
+    $now = time();
+    switch ($duration) {
+        case '1h':
+            return date('Y-m-d H:i:s', $now + 3600);
+        case '1d':
+            return date('Y-m-d H:i:s', $now + 86400);
+        case '7d':
+            return date('Y-m-d H:i:s', $now + 86400 * 7);
+        default:
+            if (is_numeric($duration)) {
+                return date('Y-m-d H:i:s', $now + (int)$duration);
+            }
+            return null;
+    }
+}

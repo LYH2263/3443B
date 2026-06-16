@@ -184,8 +184,16 @@ async function initViewerPage(id) {
         }).catch(() => {});
     }
 
+    const hash = window.location.hash;
+    const queryIdx = hash.indexOf('?');
+    let shareToken = '';
+    if (queryIdx !== -1) {
+        const params = new URLSearchParams(hash.substring(queryIdx + 1));
+        shareToken = params.get('share_token') || '';
+    }
+
     try {
-        const res = await api.public.albumDetail(id);
+        const res = await api.public.albumDetail(id, null, shareToken);
         if (res.data.need_password) {
             viewerState.needPassword = true;
             viewerState.album = res.data.album;

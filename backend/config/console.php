@@ -1,5 +1,7 @@
 <?php
 
 return [
-    'commands' => [],
+    'commands' => [
+        'clean:share-links' => \app\command\CleanShareLinks::class,
+    ],
 ];

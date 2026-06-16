@@ -68,7 +68,9 @@ COPY supervisord.conf /etc/supervisord.conf
 
 # Copy startup script
 COPY startup.sh /usr/local/bin/startup.sh
-RUN chmod +x /usr/local/bin/startup.sh
+COPY clean_share_links.sh /usr/local/bin/clean_share_links.sh
+RUN chmod +x /usr/local/bin/startup.sh \
+    && chmod +x /usr/local/bin/clean_share_links.sh
 
 # PHP config
 RUN echo "upload_max_filesize = 50M" > /usr/local/etc/php/conf.d/uploads.ini \

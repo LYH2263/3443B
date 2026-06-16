@@ -7,6 +7,14 @@ Route::get('s/:shortCode', 'app\controller\ShortLinkRedirectController@redirect'
     ->pattern(['shortCode' => '[a-zA-Z0-9_]{4,16}'])
     ->middleware(\app\middleware\CorsMiddleware::class);
 
+// Share link access (public)
+Route::get('share/:token', 'app\controller\ShareLinkAccessController@access')
+    ->pattern(['token' => '[a-f0-9_]{16,64}'])
+    ->middleware(\app\middleware\CorsMiddleware::class);
+Route::post('share/:token', 'app\controller\ShareLinkAccessController@access')
+    ->pattern(['token' => '[a-f0-9_]{16,64}'])
+    ->middleware(\app\middleware\CorsMiddleware::class);
+
 // CORS preflight
 Route::options('api/:any', function () {
     return response('', 204);
@@ -132,6 +140,15 @@ Route::group('api/admin', function () {
     Route::post('short-links/generate', 'ShortLinkController@generate');
     Route::put('short-links/:id', 'ShortLinkController@update')->pattern(['id' => '\d+']);
     Route::delete('short-links/:id', 'ShortLinkController@delete')->pattern(['id' => '\d+']);
+
+    // Share Links (限时分享链接)
+    Route::get('share-links', 'ShareLinkController@index');
+    Route::get('share-links/stats', 'ShareLinkController@stats');
+    Route::get('share-links/:id', 'ShareLinkController@detail')->pattern(['id' => '\d+']);
+    Route::post('share-links', 'ShareLinkController@create');
+    Route::post('share-links/:id/disable', 'ShareLinkController@disable')->pattern(['id' => '\d+']);
+    Route::delete('share-links/:id', 'ShareLinkController@delete')->pattern(['id' => '\d+']);
+    Route::post('share-links/clean-expired', 'ShareLinkController@cleanExpired');
 
     // Tags
     Route::get('tags', 'TagController@index');

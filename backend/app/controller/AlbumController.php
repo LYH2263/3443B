@@ -181,6 +181,20 @@ class AlbumController
             return json_error('画册不存在或未发布', 404);
         }
 
+        $shareToken = $request->get('share_token', '') ?: $request->post('share_token', '');
+        $shareLinkGranted = false;
+        $accessViaShareLink = false;
+
+        if (!empty($shareToken)) {
+            $shareLink = \app\model\ShareLink::where('token', $shareToken)
+                ->where('album_id', $id)
+                ->find();
+            if ($shareLink && $shareLink->isValid()) {
+                $accessViaShareLink = true;
+                $shareLinkGranted = true;
+            }
+        }
+
         $userLevel = 0;
         $userId = null;
         $token = $request->header('Authorization', '');
@@ -203,7 +217,7 @@ class AlbumController
         }
 
         $needPassword = false;
-        if ($album->min_level > $userLevel) {
+        if (!$shareLinkGranted && $album->min_level > $userLevel) {
             if (!empty($album->share_password)) {
                 $inputPassword = $request->get('password', '') ?: $request->post('password', '');
                 if ($inputPassword !== $album->share_password) {
@@ -225,15 +239,19 @@ class AlbumController
             ], '请输入分享密码');
         }
 
-        Album::where('id', $id)->inc('view_count')->update();
+        if (!$accessViaShareLink) {
+            Album::where('id', $id)->inc('view_count')->update();
+        }
 
-        AccessLog::create([
-            'album_id'   => $id,
-            'user_id'    => $userId,
-            'ip'         => $request->ip(),
-            'user_agent' => $request->header('user-agent', ''),
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
+        if (!$accessViaShareLink) {
+            AccessLog::create([
+                'album_id'   => $id,
+                'user_id'    => $userId,
+                'ip'         => $request->ip(),
+                'user_agent' => $request->header('user-agent', ''),
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
 
         $pages = AlbumPage::where('album_id', $id)
             ->order('page_number', 'asc')
@@ -247,6 +265,7 @@ class AlbumController
 
         return json_success([
             'need_password' => false,
+            'access_via_share_link' => $accessViaShareLink,
             'album' => [
                 'id'                   => $album->id,
                 'title'                => $album->title,

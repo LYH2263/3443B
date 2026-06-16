@@ -117,9 +117,12 @@ const api = {
     },
     public: {
         albums: (params) => apiRequest('/public/albums?' + new URLSearchParams(params)),
-        albumDetail: (id, password) => {
+        albumDetail: (id, password, shareToken) => {
             let url = `/public/albums/${id}`;
-            if (password) url += `?password=${encodeURIComponent(password)}`;
+            const params = [];
+            if (password) params.push(`password=${encodeURIComponent(password)}`);
+            if (shareToken) params.push(`share_token=${encodeURIComponent(shareToken)}`);
+            if (params.length > 0) url += '?' + params.join('&');
             return apiRequest(url);
         },
         verifyPassword: (id, password) => apiRequest(`/public/albums/${id}/verify`, { method: 'POST', body: { password } }),
@@ -182,6 +185,14 @@ const api = {
         generateShortLink: (data) => apiRequest('/admin/short-links/generate', { method: 'POST', body: data }),
         updateShortLink: (id, data) => apiRequest(`/admin/short-links/${id}`, { method: 'PUT', body: data }),
         deleteShortLink: (id) => apiRequest(`/admin/short-links/${id}`, { method: 'DELETE' }),
+
+        shareLinks: (params) => apiRequest('/admin/share-links?' + new URLSearchParams(params || {})),
+        shareLinksStats: (params) => apiRequest('/admin/share-links/stats?' + new URLSearchParams(params || {})),
+        shareLinkDetail: (id) => apiRequest(`/admin/share-links/${id}`),
+        createShareLink: (data) => apiRequest('/admin/share-links', { method: 'POST', body: data }),
+        disableShareLink: (id) => apiRequest(`/admin/share-links/${id}/disable`, { method: 'POST' }),
+        deleteShareLink: (id) => apiRequest(`/admin/share-links/${id}`, { method: 'DELETE' }),
+        cleanExpiredShareLinks: () => apiRequest('/admin/share-links/clean-expired', { method: 'POST' }),
 
         tags: (params) => apiRequest('/admin/tags?' + new URLSearchParams(params || {})),
         tagAutocomplete: (q) => apiRequest('/admin/tags/autocomplete?q=' + encodeURIComponent(q)),

@@ -1,4 +1,4 @@
-let editAlbumState = { album: null, categories: [], levels: [], backgrounds: [], pages: [], isNew: true, previewAudio: null, abExperiment: null, tags: [], tagSuggestions: [] };
+let editAlbumState = { album: null, categories: [], levels: [], backgrounds: [], pages: [], isNew: true, previewAudio: null, abExperiment: null, tags: [], tagSuggestions: [], shareLinks: [], shareLinksTotal: 0, shareLinksPage: 1, shareLinksLimit: 10 };
 
 function renderAdminAlbumEdit(id) {
     editAlbumState.isNew = !id;
@@ -44,6 +44,9 @@ async function initAdminAlbumEdit(id) {
         }
 
         renderAlbumEditForm(id);
+        if (id) {
+            loadShareLinks(id);
+        }
     } catch (e) {
         document.getElementById('album-edit-content').innerHTML = renderEmpty('加载失败');
     }
@@ -294,6 +297,23 @@ function renderAlbumEditForm(id) {
                             </button>
                         </div>
                         <div id="quick-shortlink-result" style="margin-top:16px;display:none"></div>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${id ? `
+                <div class="card" style="margin-bottom:24px">
+                    <div class="card-header">
+                        <h2>&#128272; 限时分享链接</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openCreateShareLinkModal(${id})">
+                            &#43; 创建分享链接
+                        </button>
+                    </div>
+                    <div class="card-body" id="share-links-body">
+                        <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">
+                            创建带有效期、访问次数限制的安全分享链接，可随时失效
+                        </p>
+                        <div id="share-links-list">${renderLoading()}</div>
                     </div>
                 </div>
                 ` : ''}
@@ -1191,3 +1211,230 @@ document.addEventListener('click', function(e) {
         if (container) container.style.display = 'none';
     }
 });
+
+async function loadShareLinks(albumId) {
+    const listEl = document.getElementById('share-links-list');
+    if (!listEl) return;
+
+    try {
+        const res = await api.admin.shareLinks({
+            album_id: albumId,
+            page: editAlbumState.shareLinksPage,
+            limit: editAlbumState.shareLinksLimit
+        });
+        editAlbumState.shareLinks = res.data.list || [];
+        editAlbumState.shareLinksTotal = res.data.total || 0;
+        renderShareLinks();
+    } catch (e) {
+        if (listEl) listEl.innerHTML = renderEmpty('加载失败');
+    }
+}
+
+function renderShareLinks() {
+    const listEl = document.getElementById('share-links-list');
+    if (!listEl) return;
+
+    const links = editAlbumState.shareLinks;
+
+    if (links.length === 0) {
+        listEl.innerHTML = renderEmpty('暂无分享链接');
+        return;
+    }
+
+    listEl.innerHTML = links.map(link => {
+        const statusBadge = getShareLinkStatusBadge(link);
+        const expireText = link.expire_at
+            ? formatDateTime(link.expire_at)
+            : '<span style="color:var(--success)">永久有效</span>';
+        const maxViewsText = link.max_views > 0 ? `${link.view_count} / ${link.max_views}` : `${link.view_count} / 不限`;
+
+        return `
+            <div class="share-link-card" style="background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+                    <div style="flex:1;min-width:0">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                            ${statusBadge}
+                            ${link.has_access_code ? '<span class="badge badge-warning" style="font-size:11px">&#128274; 含访问码</span>' : ''}
+                        </div>
+                        <div style="font-size:12px;color:var(--gray-500);margin-bottom:4px">
+                            创建于: ${formatDateTime(link.created_at)}
+                        </div>
+                        <div style="font-size:12px;color:var(--gray-500);margin-bottom:4px">
+                            有效期: ${expireText}
+                        </div>
+                        <div style="font-size:12px;color:var(--gray-500)">
+                            访问次数: ${maxViewsText}
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+                    <input type="text" class="form-input" style="flex:1;min-width:150px;font-size:12px"
+                           value="${escapeHtml(link.share_url)}" readonly onclick="this.select()">
+                    <button class="btn btn-sm btn-secondary" onclick="copyShareLink('${escapeHtml(link.share_url)}')">
+                        复制
+                    </button>
+                    ${link.status === 1 ? `
+                        <button class="btn btn-sm btn-warning" onclick="disableShareLink(${link.id}, ${editAlbumState.album.id})">
+                            立即失效
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-sm btn-danger" onclick="deleteShareLink(${link.id}, ${editAlbumState.album.id})">
+                        删除
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (editAlbumState.shareLinksTotal > editAlbumState.shareLinksLimit) {
+        listEl.innerHTML += `
+            <div style="text-align:center;margin-top:12px">
+                <button class="btn btn-secondary btn-sm" onclick="loadMoreShareLinks()">加载更多</button>
+            </div>
+        `;
+    }
+}
+
+function getShareLinkStatusBadge(link) {
+    if (link.status !== 1) {
+        return '<span class="badge badge-gray">已失效</span>';
+    }
+    if (link.is_expired) {
+        return '<span class="badge badge-danger">已过期</span>';
+    }
+    if (link.is_max_views) {
+        return '<span class="badge badge-danger">已达上限</span>';
+    }
+    return '<span class="badge badge-success">有效</span>';
+}
+
+function formatDateTime(dt) {
+    if (!dt) return '-';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return dt;
+    const pad = n => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function loadMoreShareLinks() {
+    editAlbumState.shareLinksPage++;
+    await loadShareLinks(editAlbumState.album.id);
+}
+
+function openCreateShareLinkModal(albumId) {
+    const html = `
+        <div id="modal-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000" onclick="if(event.target===this)closeModal()">
+            <div style="background:white;border-radius:12px;padding:24px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+                    <h3 style="font-size:18px;font-weight:600;margin:0">&#128272; 创建限时分享链接</h3>
+                    <button onclick="closeModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--gray-400)">&times;</button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">有效期</label>
+                    <select class="form-select" id="share-link-duration">
+                        <option value="1h">1 小时</option>
+                        <option value="1d" selected>1 天</option>
+                        <option value="7d">7 天</option>
+                        <option value="permanent">永久有效</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">最大访问次数（0 表示不限）</label>
+                    <input type="number" class="form-input" id="share-link-max-views" value="0" min="0" placeholder="0 表示不限">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">附加访问码（留空则不需要）</label>
+                    <input type="text" class="form-input" id="share-link-access-code" placeholder="可选，访问时需要输入此码" maxlength="50">
+                </div>
+                <div style="display:flex;gap:12px;margin-top:24px">
+                    <button class="btn btn-secondary" onclick="closeModal()" style="flex:1">取消</button>
+                    <button class="btn btn-primary" onclick="submitCreateShareLink(${albumId})" style="flex:1" id="create-share-link-btn">创建链接</button>
+                </div>
+            </div>
+        </div>
+    `;
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    document.body.appendChild(div);
+}
+
+function closeModal() {
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay) overlay.remove();
+}
+
+async function submitCreateShareLink(albumId) {
+    const duration = document.getElementById('share-link-duration').value;
+    const maxViews = parseInt(document.getElementById('share-link-max-views').value) || 0;
+    const accessCode = document.getElementById('share-link-access-code').value.trim();
+
+    const btn = document.getElementById('create-share-link-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '创建中...';
+    }
+
+    try {
+        const res = await api.admin.createShareLink({
+            album_id: albumId,
+            duration: duration,
+            max_views: maxViews,
+            access_code: accessCode
+        });
+
+        showToast('分享链接创建成功', 'success');
+        closeModal();
+
+        const url = res.data.share_url;
+        const codeText = accessCode ? `，访问码: <strong>${escapeHtml(accessCode)}</strong>` : '';
+        showToast(`链接已生成${codeText}，请尽快复制保存`, 'info', 5000);
+
+        editAlbumState.shareLinksPage = 1;
+        await loadShareLinks(albumId);
+    } catch (e) {
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '创建链接';
+        }
+    }
+}
+
+function copyShareLink(url) {
+    const input = document.createElement('textarea');
+    input.value = url;
+    document.body.appendChild(input);
+    input.select();
+    try {
+        document.execCommand('copy');
+        showToast('链接已复制到剪贴板', 'success');
+    } catch (e) {
+        showToast('复制失败，请手动复制', 'error');
+    }
+    document.body.removeChild(input);
+}
+
+function copyShortLink(url) {
+    copyShareLink(url);
+}
+
+async function disableShareLink(id, albumId) {
+    showConfirmModal('立即失效', '确定要立即使此分享链接失效吗？失效后任何人都无法通过该链接访问。', async () => {
+        try {
+            await api.admin.disableShareLink(id);
+            showToast('分享链接已失效', 'success');
+            await loadShareLinks(albumId);
+        } catch (e) {}
+    });
+}
+
+async function deleteShareLink(id, albumId) {
+    showConfirmModal('删除分享链接', '确定要删除此分享链接吗？此操作不可恢复。', async () => {
+        try {
+            await api.admin.deleteShareLink(id);
+            showToast('分享链接已删除', 'success');
+            editAlbumState.shareLinksPage = 1;
+            await loadShareLinks(albumId);
+        } catch (e) {}
+    });
+}
