@@ -1,4 +1,4 @@
-let editAlbumState = { album: null, categories: [], levels: [], backgrounds: [], pages: [], isNew: true };
+let editAlbumState = { album: null, categories: [], levels: [], backgrounds: [], pages: [], isNew: true, previewAudio: null };
 
 function renderAdminAlbumEdit(id) {
     editAlbumState.isNew = !id;
@@ -34,6 +34,7 @@ async function initAdminAlbumEdit(id) {
                 title: '', description: '', cover_image: '', background_image: '',
                 category_id: '', min_level: 0, share_password: '', status: 1,
                 qrcode_logo: '', qrcode_text_line1: '', qrcode_text_line2: '',
+                bgm_audio: '', bgm_volume: 80, bgm_enabled: 1,
                 sort_order: 0
             };
             editAlbumState.pages = [];
@@ -140,7 +141,34 @@ function renderAlbumEditForm(id) {
                             </div>
                         </div>
                     </div>
+            </div>
+
+                ${id ? `
+                <div class="card" style="margin-bottom:24px">
+                    <div class="card-header">
+                        <h2>&#127925; 音频设置</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="bgm-enabled" ${a.bgm_enabled ? 'checked' : ''} onchange="toggleBgmEnabled()"> 启用背景音乐
+                            </label>
+                        </div>
+                        <div id="bgm-settings" style="${a.bgm_enabled ? '' : 'display:none;opacity:0.5;pointer-events:none'}">
+                            <div class="form-group">
+                                <label class="form-label">背景音乐（整册循环播放）</label>
+                                ${createUploadArea('bgm', 'audio/*', false)}
+                                <div id="bgm-preview">${renderAudioPreview('bgm', a.bgm_audio, a.bgm_audio_url, a.title)}</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">背景音乐音量: <span id="bgm-volume-value">${a.bgm_volume || 80}%</span></label>
+                                <input type="range" id="bgm-volume" min="0" max="100" value="${a.bgm_volume || 80}" 
+                                    class="form-range" oninput="updateBgmVolume(this.value)">
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                ` : ''}
 
                 ${id ? `
                 <div class="card" style="margin-bottom:24px">
@@ -158,6 +186,20 @@ function renderAlbumEditForm(id) {
                                     <div class="page-card-image">
                                         <img src="${getImageUrl(p.image_url || p.image)}" alt="第${i + 1}页" onerror="this.src='${getPlaceholderImage()}'">
                                         <span class="page-card-number">第${p.page_number}页</span>
+                                    </div>
+                                    <div class="page-card-narration">
+                                        <div class="narration-header">
+                                            <span class="narration-icon">&#127908;</span>
+                                            <span class="narration-label">语音解说</span>
+                                        </div>
+                                        <div class="narration-controls" id="narration-preview-${p.id}">
+                                            ${renderPageNarrationPreview(p)}
+                                        </div>
+                                        ${!p.narration_audio ? `
+                                        <div class="narration-upload">
+                                            ${createUploadArea('narration-' + p.id, 'audio/*', false)}
+                                        </div>
+                                        ` : ''}
                                     </div>
                                     <div class="page-card-actions">
                                         <button class="btn btn-sm btn-danger" onclick="deleteAlbumPage(${id},${p.id})">&#128465; 删除</button>
@@ -198,11 +240,23 @@ function renderAlbumEditForm(id) {
             </div>
         </div>
     `;
+    
+    if (id && editAlbumState.pages.length > 0) {
+        setTimeout(() => {
+            editAlbumState.pages.forEach(p => {
+                if (!p.narration_audio) {
+                    setupDynamicNarrationUpload(p.id);
+                }
+            });
+        }, 100);
+    }
 }
 
 window._albumCoverPath = null;
 window._albumBgPath = null;
 window._albumLogoPath = null;
+window._albumBgmPath = null;
+window._pageNarrationPaths = {};
 
 window.onUploadComplete_cover = function (results) {
     if (results.length > 0) {
@@ -302,6 +356,9 @@ async function saveAlbum(id) {
     if (window._albumCoverPath) data.cover_image = window._albumCoverPath;
     if (window._albumBgPath) data.background_image = window._albumBgPath;
     if (window._albumLogoPath) data.qrcode_logo = window._albumLogoPath;
+    if (window._albumBgmPath !== null) data.bgm_audio = window._albumBgmPath;
+    if (document.getElementById('bgm-volume')) data.bgm_volume = parseInt(document.getElementById('bgm-volume').value) || 80;
+    data.bgm_enabled = document.getElementById('bgm-enabled') ? (document.getElementById('bgm-enabled').checked ? 1 : 0) : 1;
 
     try {
         if (id) {
@@ -310,6 +367,8 @@ async function saveAlbum(id) {
             window._albumCoverPath = null;
             window._albumBgPath = null;
             window._albumLogoPath = null;
+            window._albumBgmPath = null;
+            window._pageNarrationPaths = {};
         } else {
             const res = await api.admin.createAlbum(data);
             showToast('画册创建成功', 'success');
@@ -360,4 +419,281 @@ async function deleteAlbumPage(albumId, pageId) {
             initAdminAlbumEdit(albumId);
         } catch (e) {}
     });
+}
+
+function renderAudioPreview(type, path, url, name) {
+    if (!path && !url) return '';
+    const audioUrl = url || getImageUrl(path);
+    const displayName = name || '音频文件';
+    return `
+        <div class="audio-preview-card">
+            <div class="audio-preview-info">
+                <span class="audio-preview-icon">&#127925;</span>
+                <div class="audio-preview-text">
+                    <div class="audio-preview-name">${escapeHtml(displayName)}</div>
+                    <div class="audio-preview-url" style="font-size:11px;color:var(--gray-400);word-break:break-all">${audioUrl}</div>
+                </div>
+            </div>
+            <div class="audio-preview-actions">
+                <button class="btn btn-sm btn-secondary" onclick="playAudioPreview('${audioUrl}')" title="试听">&#9654; 试听</button>
+                <button class="btn btn-sm btn-danger" onclick="delete${type.charAt(0).toUpperCase() + type.slice(1)}Audio('${path}')" title="删除">&#128465; 删除</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderPageNarrationPreview(page) {
+    if (!page.narration_audio && !page.narration_audio_url) {
+        return '<div style="color:var(--gray-400);font-size:12px;padding:8px">暂无语音解说</div>';
+    }
+    const audioUrl = page.narration_audio_url || getImageUrl(page.narration_audio);
+    return `
+        <div class="audio-preview-card audio-preview-card-sm">
+            <div class="audio-preview-info">
+                <span class="audio-preview-icon">&#127908;</span>
+                <div class="audio-preview-text">
+                    <div class="audio-preview-name">第${page.page_number}页解说</div>
+                    ${page.narration_duration ? `<div class="audio-preview-duration" style="font-size:11px;color:var(--gray-400)">时长: ${formatDuration(page.narration_duration)}</div>` : ''}
+                </div>
+            </div>
+            <div class="audio-preview-actions">
+                <button class="btn btn-sm btn-secondary" onclick="playAudioPreview('${audioUrl}')" title="试听">&#9654;</button>
+                <button class="btn btn-sm btn-danger" onclick="deletePageNarration(${page.id}, '${page.narration_audio}')" title="删除">&#128465;</button>
+            </div>
+        </div>
+    `;
+}
+
+function formatDuration(seconds) {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function toggleBgmEnabled() {
+    const enabled = document.getElementById('bgm-enabled').checked;
+    const settings = document.getElementById('bgm-settings');
+    if (enabled) {
+        settings.style.display = 'block';
+        settings.style.opacity = '1';
+        settings.style.pointerEvents = 'auto';
+    } else {
+        settings.style.display = 'none';
+        settings.style.opacity = '0.5';
+        settings.style.pointerEvents = 'none';
+    }
+}
+
+function updateBgmVolume(value) {
+    document.getElementById('bgm-volume-value').textContent = value + '%';
+}
+
+function playAudioPreview(url) {
+    if (editAlbumState.previewAudio) {
+        editAlbumState.previewAudio.pause();
+        editAlbumState.previewAudio.currentTime = 0;
+    }
+    
+    const audio = new Audio(url);
+    editAlbumState.previewAudio = audio;
+    
+    audio.addEventListener('ended', () => {
+        editAlbumState.previewAudio = null;
+    });
+    
+    audio.addEventListener('error', () => {
+        showToast('音频加载失败，请检查文件', 'error');
+        editAlbumState.previewAudio = null;
+    });
+    
+    audio.play().catch(e => {
+        showToast('音频播放失败', 'error');
+        editAlbumState.previewAudio = null;
+    });
+    
+    showToast('开始播放', 'success');
+}
+
+function stopAudioPreview() {
+    if (editAlbumState.previewAudio) {
+        editAlbumState.previewAudio.pause();
+        editAlbumState.previewAudio.currentTime = 0;
+        editAlbumState.previewAudio = null;
+    }
+}
+
+window.onUploadComplete_bgm = function (results) {
+    if (results.length > 0) {
+        window._albumBgmPath = results[0].path;
+        document.getElementById('bgm-preview').innerHTML = renderAudioPreview('bgm', results[0].path, results[0].url, results[0].name);
+        showToast('背景音乐上传成功', 'success');
+    }
+};
+
+window.onbeforeunload = function() {
+    stopAudioPreview();
+};
+
+async function deleteBgmAudio(path) {
+    showConfirmModal('删除音频', '确定要删除背景音乐吗？', async () => {
+        try {
+            await api.upload.deleteAudio(path);
+            window._albumBgmPath = '';
+            if (editAlbumState.album) {
+                editAlbumState.album.bgm_audio = '';
+                editAlbumState.album.bgm_audio_url = '';
+            }
+            document.getElementById('bgm-preview').innerHTML = '';
+            showToast('背景音乐已删除', 'success');
+        } catch (e) {}
+    });
+}
+
+async function deletePageNarration(pageId, path) {
+    showConfirmModal('删除音频', '确定要删除此页面的语音解说吗？', async () => {
+        try {
+            if (path) {
+                await api.upload.deleteAudio(path);
+            }
+            await api.admin.updatePage(editAlbumState.album.id, pageId, {
+                narration_audio: '',
+                narration_duration: 0
+            });
+            const page = editAlbumState.pages.find(p => p.id === pageId);
+            if (page) {
+                page.narration_audio = '';
+                page.narration_audio_url = '';
+                page.narration_duration = 0;
+            }
+            delete window._pageNarrationPaths[pageId];
+            document.getElementById(`narration-preview-${pageId}`).innerHTML = renderPageNarrationPreview(page);
+            const uploadAreaId = `upload-area-narration-${pageId}`;
+            let uploadArea = document.getElementById(uploadAreaId);
+            if (!uploadArea) {
+                const container = document.querySelector(`[data-id="${pageId}"] .narration-upload`);
+                if (container) {
+                    container.innerHTML = createUploadArea('narration-' + pageId, 'audio/*', false);
+                    setupDynamicNarrationUpload(pageId);
+                }
+            }
+            showToast('语音解说已删除', 'success');
+        } catch (e) {}
+    });
+}
+
+function setupDynamicNarrationUpload(pageId) {
+    const fileInput = document.getElementById(`file-input-narration-${pageId}`);
+    if (fileInput) {
+        fileInput.onchange = function(e) {
+            handleNarrationFileSelect(e, pageId);
+        };
+    }
+    
+    const uploadArea = document.getElementById(`upload-area-narration-${pageId}`);
+    if (uploadArea) {
+        uploadArea.ondrop = function(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                uploadNarrationFile(files[0], pageId);
+            }
+        };
+    }
+}
+
+function handleNarrationFileSelect(event, pageId) {
+    const files = event.target.files;
+    if (!files.length) return;
+    uploadNarrationFile(files[0], pageId);
+}
+
+async function uploadNarrationFile(file, pageId) {
+    const uploadArea = document.getElementById(`upload-area-narration-${pageId}`);
+    if (uploadArea) {
+        uploadArea.innerHTML = '<div class="loading"><div class="spinner"></div></div><p style="margin-top:8px;font-size:13px;color:var(--gray-500)">上传中...</p>';
+    }
+    
+    try {
+        const res = await api.upload.audio(file, 'narration');
+        if (res.data) {
+            window._pageNarrationPaths[pageId] = res.data.path;
+            
+            const tempAudio = new Audio(res.data.url || getImageUrl(res.data.path));
+            tempAudio.addEventListener('loadedmetadata', async () => {
+                const duration = Math.round(tempAudio.duration);
+                
+                try {
+                    await api.admin.updatePage(editAlbumState.album.id, pageId, {
+                        narration_audio: res.data.path,
+                        narration_duration: duration
+                    });
+                    
+                    const page = editAlbumState.pages.find(p => p.id === pageId);
+                    if (page) {
+                        page.narration_audio = res.data.path;
+                        page.narration_audio_url = res.data.url || getImageUrl(res.data.path);
+                        page.narration_duration = duration;
+                    }
+                    
+                    document.getElementById(`narration-preview-${pageId}`).innerHTML = renderPageNarrationPreview(page);
+                    
+                    if (uploadArea) {
+                        uploadArea.parentElement.style.display = 'none';
+                    }
+                    
+                    showToast('语音解说上传成功', 'success');
+                } catch (e) {
+                    if (uploadArea) {
+                        uploadArea.innerHTML = `
+                            <div class="upload-area-icon">&#127925;</div>
+                            <h4>点击或拖拽上传音频</h4>
+                            <p>支持 MP3、WAV、OGG、M4A、AAC 格式，最大 50MB</p>
+                        `;
+                    }
+                }
+            });
+            
+            tempAudio.addEventListener('error', async () => {
+                try {
+                    await api.admin.updatePage(editAlbumState.album.id, pageId, {
+                        narration_audio: res.data.path,
+                        narration_duration: 0
+                    });
+                    
+                    const page = editAlbumState.pages.find(p => p.id === pageId);
+                    if (page) {
+                        page.narration_audio = res.data.path;
+                        page.narration_audio_url = res.data.url || getImageUrl(res.data.path);
+                        page.narration_duration = 0;
+                    }
+                    
+                    document.getElementById(`narration-preview-${pageId}`).innerHTML = renderPageNarrationPreview(page);
+                    
+                    if (uploadArea) {
+                        uploadArea.parentElement.style.display = 'none';
+                    }
+                    
+                    showToast('语音解说上传成功（无法获取时长）', 'success');
+                } catch (e) {
+                    if (uploadArea) {
+                        uploadArea.innerHTML = `
+                            <div class="upload-area-icon">&#127925;</div>
+                            <h4>点击或拖拽上传音频</h4>
+                            <p>支持 MP3、WAV、OGG、M4A、AAC 格式，最大 50MB</p>
+                        `;
+                    }
+                }
+            });
+        }
+    } catch (e) {
+        if (uploadArea) {
+            uploadArea.innerHTML = `
+                <div class="upload-area-icon">&#127925;</div>
+                <h4>点击或拖拽上传音频</h4>
+                <p>支持 MP3、WAV、OGG、M4A、AAC 格式，最大 50MB</p>
+            `;
+        }
+    }
 }

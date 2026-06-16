@@ -39,6 +39,8 @@ Route::group('api/upload', function () {
     Route::post('image', 'UploadController@image');
     Route::post('avatar', 'UploadController@avatar');
     Route::post('multi', 'UploadController@multiImage');
+    Route::post('audio', 'UploadController@audio');
+    Route::post('audio/delete', 'UploadController@deleteAudio');
 })->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AuthMiddleware::class]);
 
 // Admin routes (require admin)

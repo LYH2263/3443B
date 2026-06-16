@@ -13,10 +13,11 @@ class AlbumPage extends Model
     protected $updateTime = 'updated_at';
 
     protected $type = [
-        'id'          => 'integer',
-        'album_id'    => 'integer',
-        'page_number' => 'integer',
-        'sort_order'  => 'integer',
+        'id'                 => 'integer',
+        'album_id'           => 'integer',
+        'page_number'        => 'integer',
+        'sort_order'         => 'integer',
+        'narration_duration' => 'integer',
     ];
 
     public function album()

@@ -1,4 +1,4 @@
-let viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false };
+let viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false, audioManager: null, hasAudio: false };
 
 function renderViewerPage(id) {
     return `
@@ -32,12 +32,121 @@ function renderViewerPage(id) {
                 <button onclick="flipNext()">下一页 &#9654;</button>
                 <button onclick="toggleFullscreen()" style="margin-left:16px" title="全屏">&#9974;</button>
             </div>
+            <div id="audio-control" class="audio-control" style="display:none">
+                <button id="audio-mute-btn" class="audio-mute-btn" onclick="toggleAudioMute()" title="静音/播放">
+                    <span id="audio-icon">&#128266;</span>
+                </button>
+            </div>
         </div>
     `;
 }
 
+window._viewerAudioCleanup = null;
+
+function initViewerAudioCleanup() {
+    if (viewerState.audioManager) {
+        viewerState.audioManager.destroy();
+        viewerState.audioManager = null;
+    }
+    viewerState.hasAudio = false;
+    const audioControl = document.getElementById('audio-control');
+    if (audioControl) {
+        audioControl.style.display = 'none';
+    }
+}
+
+function setupViewerAudio(data) {
+    viewerState.album = data.album;
+    viewerState.pages = data.pages || [];
+    
+    if (window._viewerAudioCleanup) {
+        window._viewerAudioCleanup();
+    }
+    
+    viewerState.audioManager = new AudioManager();
+    window._viewerAudioCleanup = initViewerAudioCleanup;
+    
+    const hasBgm = data.album.bgm_audio_url && data.album.bgm_enabled;
+    const hasNarration = viewerState.pages.some(p => p.narration_audio_url);
+    viewerState.hasAudio = hasBgm || hasNarration;
+    
+    if (viewerState.hasAudio) {
+        const audioControl = document.getElementById('audio-control');
+        if (audioControl) {
+            audioControl.style.display = 'flex';
+        }
+        
+        viewerState.audioManager.init(
+            data.album.bgm_audio_url,
+            data.album.bgm_volume,
+            data.album.bgm_enabled
+        );
+        
+        updateAudioMuteIcon();
+    }
+    
+    document.getElementById('viewer-title').textContent = data.album.title || '画册';
+    document.getElementById('viewer-loading').style.display = 'none';
+    
+    if (data.album.background_image_url) {
+        document.getElementById('viewer-bg').style.backgroundImage = `url(${getImageUrl(data.album.background_image_url})`;
+    }
+    
+    if (viewerState.pages.length === 0) {
+        document.getElementById('flipbook-wrapper').innerHTML = renderEmpty('该画册暂无页面内容');
+        return;
+    }
+    
+    const flipbook = document.getElementById('flipbook');
+    flipbook.style.display = 'block';
+    flipbook.innerHTML = '';
+    
+    viewerState.pages.forEach((page, index) => {
+        const pageEl = document.createElement('div');
+        pageEl.className = 'page';
+        if (page.image_url) {
+            pageEl.innerHTML = `<img src="${getImageUrl(page.image_url)}" alt="第${index + 1}页" loading="lazy">`;
+        } else {
+            pageEl.innerHTML = `<div class="page-content"><h3>${escapeHtml(page.title || '第' + (index + 1) + '页')}</h3></div>`;
+        }
+        flipbook.appendChild(pageEl);
+    });
+    
+    document.getElementById('viewer-controls').style.display = 'flex';
+    
+    setTimeout(() => {
+        initFlipbook();
+    }, 100);
+}
+
+function updateAudioMuteIcon() {
+    const icon = document.getElementById('audio-icon');
+    if (icon && viewerState.audioManager) {
+        icon.textContent = viewerState.audioManager.isMuted ? '&#128263;' : '&#128266;';
+    }
+}
+
+function toggleAudioMute() {
+    if (viewerState.audioManager) {
+        const isMuted = viewerState.audioManager.toggleMute();
+        updateAudioMuteIcon();
+        showToast(isMuted ? '已静音' : '已开启声音', 'success');
+    }
+}
+
+function playPageNarration(pageNumber) {
+    if (viewerState.audioManager && viewerState.flipbookReady) {
+        const page = viewerState.pages[pageNumber - 1];
+        if (page && page.narration_audio_url) {
+            viewerState.audioManager.playNarration(getImageUrl(page.narration_audio_url));
+        } else {
+            viewerState.audioManager.stopNarration();
+        }
+    }
+}
+
 async function initViewerPage(id) {
-    viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false };
+    viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false, audioManager: null, hasAudio: false };
     try {
         const res = await api.public.albumDetail(id);
         if (res.data.need_password) {
@@ -48,7 +157,7 @@ async function initViewerPage(id) {
             document.getElementById('viewer-password').style.display = 'flex';
             return;
         }
-        setupViewer(res.data);
+        setupViewerAudio(res.data);
     } catch (e) {
         document.getElementById('viewer-loading').innerHTML = renderEmpty('画册加载失败');
     }
@@ -67,46 +176,8 @@ async function verifyAlbumPassword(id) {
             return;
         }
         document.getElementById('viewer-password').style.display = 'none';
-        setupViewer(res.data);
+        setupViewerAudio(res.data);
     } catch (e) {}
-}
-
-function setupViewer(data) {
-    viewerState.album = data.album;
-    viewerState.pages = data.pages || [];
-
-    document.getElementById('viewer-title').textContent = data.album.title || '画册';
-    document.getElementById('viewer-loading').style.display = 'none';
-
-    if (data.album.background_image_url) {
-        document.getElementById('viewer-bg').style.backgroundImage = `url(${getImageUrl(data.album.background_image_url)})`;
-    }
-
-    if (viewerState.pages.length === 0) {
-        document.getElementById('flipbook-wrapper').innerHTML = renderEmpty('该画册暂无页面内容');
-        return;
-    }
-
-    const flipbook = document.getElementById('flipbook');
-    flipbook.style.display = 'block';
-    flipbook.innerHTML = '';
-
-    viewerState.pages.forEach((page, index) => {
-        const pageEl = document.createElement('div');
-        pageEl.className = 'page';
-        if (page.image_url) {
-            pageEl.innerHTML = `<img src="${getImageUrl(page.image_url)}" alt="第${index + 1}页" loading="lazy">`;
-        } else {
-            pageEl.innerHTML = `<div class="page-content"><h3>${escapeHtml(page.title || '第' + (index + 1) + '页')}</h3></div>`;
-        }
-        flipbook.appendChild(pageEl);
-    });
-
-    document.getElementById('viewer-controls').style.display = 'flex';
-
-    setTimeout(() => {
-        initFlipbook();
-    }, 100);
 }
 
 function initFlipbook() {
@@ -135,16 +206,26 @@ function initFlipbook() {
             turning: function (event, page, view) {
                 viewerState.currentPage = page;
                 updatePageIndicator();
+                if (viewerState.audioManager) {
+                    viewerState.audioManager.stopNarration();
+                }
             },
             turned: function (event, page, view) {
                 viewerState.currentPage = page;
                 updatePageIndicator();
+                setTimeout(() => {
+                    playPageNarration(page);
+                }, 100);
             }
         }
     });
 
     viewerState.flipbookReady = true;
     updatePageIndicator();
+    
+    setTimeout(() => {
+        playPageNarration(viewerState.currentPage);
+    }, 500);
 }
 
 function updatePageIndicator() {

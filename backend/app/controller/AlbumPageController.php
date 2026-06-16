@@ -22,6 +22,7 @@ class AlbumPageController
             ->select()
             ->each(function ($page) {
                 $page->image_url = $page->image ? get_upload_url($page->image) : '';
+                $page->narration_audio_url = $page->narration_audio ? get_upload_url($page->narration_audio) : '';
                 return $page;
             });
 
@@ -55,10 +56,13 @@ class AlbumPageController
         $page->image = $data['image'];
         $page->title = $data['title'] ?? '';
         $page->description = $data['description'] ?? '';
+        $page->narration_audio = $data['narration_audio'] ?? '';
+        $page->narration_duration = $data['narration_duration'] ?? 0;
         $page->sort_order = $data['sort_order'] ?? 0;
         $page->save();
 
         $page->image_url = get_upload_url($page->image);
+        $page->narration_audio_url = $page->narration_audio ? get_upload_url($page->narration_audio) : '';
 
         Log::info("添加画册页面: Album ID {$albumId}, Page {$page->page_number} by user {$request->uid}");
 
@@ -74,7 +78,7 @@ class AlbumPageController
 
         $data = getRequestData($request);
 
-        $fields = ['page_number', 'image', 'title', 'description', 'sort_order'];
+        $fields = ['page_number', 'image', 'title', 'description', 'narration_audio', 'narration_duration', 'sort_order'];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
                 $page->$field = $data[$field];
@@ -83,6 +87,7 @@ class AlbumPageController
 
         $page->save();
         $page->image_url = get_upload_url($page->image);
+        $page->narration_audio_url = $page->narration_audio ? get_upload_url($page->narration_audio) : '';
 
         Log::info("更新画册页面: Album ID {$albumId}, Page ID {$id} by user {$request->uid}");
 

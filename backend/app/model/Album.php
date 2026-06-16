@@ -20,6 +20,8 @@ class Album extends Model
         'status'      => 'integer',
         'sort_order'  => 'integer',
         'creator_id'  => 'integer',
+        'bgm_volume'  => 'integer',
+        'bgm_enabled' => 'integer',
     ];
 
     public function category()

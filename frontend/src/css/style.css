@@ -747,3 +747,225 @@ input:-webkit-autofill:focus {
     .category-chip { padding: 6px 14px; font-size: 13px; }
     .pagination { flex-wrap: wrap; }
 }
+
+/* ==================== Audio Controls ==================== */
+.audio-control {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.audio-mute-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--white);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-lg);
+}
+
+.audio-mute-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.audio-mute-btn:active {
+    transform: scale(0.95);
+}
+
+/* ==================== Audio Preview Cards ==================== */
+.audio-preview-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    margin-top: 12px;
+}
+
+.audio-preview-card-sm {
+    padding: 8px 12px;
+    margin-top: 8px;
+}
+
+.audio-preview-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.audio-preview-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.audio-preview-card-sm .audio-preview-icon {
+    font-size: 18px;
+}
+
+.audio-preview-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.audio-preview-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-800);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.audio-preview-card-sm .audio-preview-name {
+    font-size: 12px;
+}
+
+.audio-preview-duration {
+    margin-top: 2px;
+}
+
+.audio-preview-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.audio-preview-card-sm .audio-preview-actions .btn {
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+/* ==================== Form Range ==================== */
+.form-range {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--gray-200);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.form-range::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: var(--primary-dark);
+}
+
+.form-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    border: none;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.form-range::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    background: var(--primary-dark);
+}
+
+/* ==================== Page Narration ==================== */
+.page-card-narration {
+    padding: 12px;
+    background: var(--gray-50);
+    border-top: 1px solid var(--gray-200);
+}
+
+.narration-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.narration-icon {
+    font-size: 16px;
+    color: var(--primary);
+}
+
+.narration-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.narration-controls {
+    margin-bottom: 8px;
+}
+
+.narration-upload .upload-area {
+    padding: 16px 12px;
+}
+
+.narration-upload .upload-area-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+}
+
+.narration-upload .upload-area h4 {
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.narration-upload .upload-area p {
+    font-size: 11px;
+}
+
+/* ==================== Audio Control Responsive ==================== */
+@media (max-width: 768px) {
+    .audio-control {
+        right: 16px;
+        bottom: 16px;
+    }
+    
+    .audio-mute-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+    
+    .audio-preview-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .audio-preview-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}

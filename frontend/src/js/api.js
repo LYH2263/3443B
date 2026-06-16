@@ -162,6 +162,15 @@ const api = {
             formData.append('type', type);
             return apiRequest('/upload/image', { method: 'POST', body: formData, headers: {} });
         },
+        audio: async (file, type = 'bgm') => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', type);
+            return apiRequest('/upload/audio', { method: 'POST', body: formData, headers: {} });
+        },
+        deleteAudio: async (path) => {
+            return apiRequest('/upload/audio/delete', { method: 'POST', body: { path } });
+        },
     },
     init: () => apiRequest('/init'),
 };

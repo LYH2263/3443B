@@ -43,6 +43,7 @@ class AlbumController
                 $item->cover_image_url = $item->cover_image ? get_upload_url($item->cover_image) : '';
                 $item->background_image_url = $item->background_image ? get_upload_url($item->background_image) : '';
                 $item->qrcode_image_url = $item->qrcode_image ? get_upload_url($item->qrcode_image) : '';
+                $item->bgm_audio_url = $item->bgm_audio ? get_upload_url($item->bgm_audio) : '';
                 $item->page_count = AlbumPage::where('album_id', $item->id)->count();
                 return $item;
             });
@@ -122,9 +123,11 @@ class AlbumController
         $album->background_image_url = $album->background_image ? get_upload_url($album->background_image) : '';
         $album->qrcode_image_url = $album->qrcode_image ? get_upload_url($album->qrcode_image) : '';
         $album->qrcode_logo_url = $album->qrcode_logo ? get_upload_url($album->qrcode_logo) : '';
+        $album->bgm_audio_url = $album->bgm_audio ? get_upload_url($album->bgm_audio) : '';
 
         $pages = $album->pages->each(function ($page) {
             $page->image_url = $page->image ? get_upload_url($page->image) : '';
+            $page->narration_audio_url = $page->narration_audio ? get_upload_url($page->narration_audio) : '';
             return $page;
         });
 
@@ -197,6 +200,8 @@ class AlbumController
             ->select()
             ->each(function ($page) {
                 $page->image_url = $page->image ? get_upload_url($page->image) : '';
+                $page->narration_audio_url = $page->narration_audio ? get_upload_url($page->narration_audio) : '';
+                $page->narration_duration = $page->narration_duration;
                 return $page;
             });
 
@@ -213,6 +218,9 @@ class AlbumController
                 'qrcode_text_line2'    => $album->qrcode_text_line2,
                 'category'             => $album->category,
                 'view_count'           => $album->view_count,
+                'bgm_audio_url'        => $album->bgm_audio && $album->bgm_enabled ? get_upload_url($album->bgm_audio) : '',
+                'bgm_volume'           => $album->bgm_volume,
+                'bgm_enabled'          => $album->bgm_enabled,
             ],
             'pages' => $pages,
         ]);
@@ -244,6 +252,9 @@ class AlbumController
         $album->qrcode_logo = $data['qrcode_logo'] ?? '';
         $album->qrcode_text_line1 = $data['qrcode_text_line1'] ?? '';
         $album->qrcode_text_line2 = $data['qrcode_text_line2'] ?? '';
+        $album->bgm_audio = $data['bgm_audio'] ?? '';
+        $album->bgm_volume = $data['bgm_volume'] ?? 80;
+        $album->bgm_enabled = $data['bgm_enabled'] ?? 1;
         $album->status = $data['status'] ?? 1;
         $album->sort_order = $data['sort_order'] ?? 0;
         $album->creator_id = $request->uid;
@@ -272,7 +283,7 @@ class AlbumController
 
         $fields = ['description', 'cover_image', 'background_image', 'category_id',
                     'min_level', 'share_password', 'qrcode_logo',
-                    'qrcode_text_line1', 'qrcode_text_line2', 'status', 'sort_order'];
+                    'qrcode_text_line1', 'qrcode_text_line2', 'bgm_audio', 'bgm_volume', 'bgm_enabled', 'status', 'sort_order'];
 
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {

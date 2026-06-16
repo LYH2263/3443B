@@ -42,6 +42,11 @@ async function handleRoute() {
     const hash = window.location.hash.slice(1) || '/';
     const path = hash.split('?')[0];
 
+    if (window._viewerAudioCleanup) {
+        window._viewerAudioCleanup();
+        window._viewerAudioCleanup = null;
+    }
+
     const matched = matchRoute(path);
 
     if (!matched) {

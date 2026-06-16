@@ -102,3 +102,267 @@ function getLogoSvg() {
 function getPlaceholderImage() {
     return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect fill='%23f3f4f6' width='400' height='300'/%3E%3Ctext fill='%239ca3af' font-family='sans-serif' font-size='18' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E暂无图片%3C/text%3E%3C/svg%3E`;
 }
+
+class AudioManager {
+    constructor() {
+        this.bgmAudio = null;
+        this.narrationAudio = null;
+        this.bgmVolume = 0.8;
+        this.bgmDuckedVolume = 0.2;
+        this.currentBgmVolume = 0.8;
+        this.isMuted = false;
+        this.isBgmPlaying = false;
+        this.isNarrationPlaying = false;
+        this.isUnlocked = false;
+        this.bgmUrl = '';
+        this.bgmEnabled = true;
+        this.pendingBgmPlay = false;
+        this.fadeDuration = 500;
+        this.ducking = false;
+        this._eventListeners = [];
+        this._userInteractionHandler = null;
+    }
+
+    init(bgmUrl, bgmVolume = 80, bgmEnabled = true) {
+        this.bgmUrl = bgmUrl || '';
+        this.bgmVolume = Math.max(0, Math.min(1, bgmVolume / 100));
+        this.currentBgmVolume = this.bgmVolume;
+        this.bgmEnabled = bgmEnabled;
+        this.isMuted = false;
+        
+        this._setupUserInteraction();
+        
+        if (this.bgmUrl && this.bgmEnabled && this.isUnlocked) {
+            this._playBgm();
+        } else if (this.bgmUrl && this.bgmEnabled) {
+            this.pendingBgmPlay = true;
+        }
+    }
+
+    _setupUserInteraction() {
+        if (this._userInteractionHandler) return;
+        
+        this._userInteractionHandler = () => {
+            if (!this.isUnlocked) {
+                this.isUnlocked = true;
+                
+                const tempAudio = new Audio();
+                tempAudio.volume = 0;
+                tempAudio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleMc0OEeWmqxGO8T/+/sA';
+                tempAudio.play().then(() => {
+                    tempAudio.pause();
+                    tempAudio.currentTime = 0;
+                }).catch(() => {});
+                
+                if (this.pendingBgmPlay && this.bgmUrl && this.bgmEnabled) {
+                    this.pendingBgmPlay = false;
+                    this._playBgm();
+                }
+            }
+        };
+        
+        ['click', 'touchstart', 'keydown', 'scroll'].forEach(event => {
+            document.addEventListener(event, this._userInteractionHandler, { passive: true, once: false });
+            this._eventListeners.push({ event, handler: this._userInteractionHandler });
+        });
+    }
+
+    _playBgm() {
+        if (!this.bgmUrl || !this.bgmEnabled || this.isBgmPlaying) return;
+        
+        try {
+            if (this.bgmAudio) {
+                this.bgmAudio.pause();
+                this.bgmAudio.currentTime = 0;
+            }
+            
+            this.bgmAudio = new Audio(this.bgmUrl);
+            this.bgmAudio.loop = true;
+            this.bgmAudio.volume = this.isMuted ? 0 : this.currentBgmVolume;
+            this.bgmAudio.preload = 'auto';
+            
+            this.bgmAudio.addEventListener('error', (e) => {
+                console.warn('BGM load failed:', e);
+                this.isBgmPlaying = false;
+                this.bgmAudio = null;
+            });
+            
+            this.bgmAudio.addEventListener('ended', () => {
+                this.isBgmPlaying = false;
+            });
+            
+            this.bgmAudio.play().then(() => {
+                this.isBgmPlaying = true;
+            }).catch((e) => {
+                console.warn('BGM play failed:', e);
+                this.isBgmPlaying = false;
+            });
+        } catch (e) {
+            console.warn('BGM init failed:', e);
+            this.isBgmPlaying = false;
+            this.bgmAudio = null;
+        }
+    }
+
+    playNarration(audioUrl) {
+        if (!audioUrl) {
+            this.stopNarration();
+            return;
+        }
+        
+        if (this.narrationAudio) {
+            this.narrationAudio.pause();
+            this.narrationAudio.currentTime = 0;
+            this.narrationAudio = null;
+        }
+        
+        try {
+            this.narrationAudio = new Audio(audioUrl);
+            this.narrationAudio.volume = this.isMuted ? 0 : 1;
+            this.narrationAudio.preload = 'auto';
+            
+            this.narrationAudio.addEventListener('loadeddata', () => {
+                this._startDucking();
+            });
+            
+            this.narrationAudio.addEventListener('ended', () => {
+                this._stopDucking();
+                this.isNarrationPlaying = false;
+                this.narrationAudio = null;
+            });
+            
+            this.narrationAudio.addEventListener('error', (e) => {
+                console.warn('Narration load failed:', e);
+                this._stopDucking();
+                this.isNarrationPlaying = false;
+                this.narrationAudio = null;
+            });
+            
+            this.narrationAudio.play().then(() => {
+                this.isNarrationPlaying = true;
+            }).catch((e) => {
+                console.warn('Narration play failed:', e);
+                this._stopDucking();
+                this.isNarrationPlaying = false;
+                this.narrationAudio = null;
+            });
+        } catch (e) {
+            console.warn('Narration init failed:', e);
+            this._stopDucking();
+            this.isNarrationPlaying = false;
+            this.narrationAudio = null;
+        }
+    }
+
+    stopNarration() {
+        if (this.narrationAudio) {
+            this.narrationAudio.pause();
+            this.narrationAudio.currentTime = 0;
+            this.narrationAudio = null;
+        }
+        this.isNarrationPlaying = false;
+        this._stopDucking();
+    }
+
+    _startDucking() {
+        if (this.ducking || !this.bgmAudio || !this.isBgmPlaying) return;
+        
+        this.ducking = true;
+        this._fadeVolume(this.bgmAudio, this.currentBgmVolume, this.bgmDuckedVolume, this.fadeDuration);
+    }
+
+    _stopDucking() {
+        if (!this.ducking || !this.bgmAudio) {
+            this.ducking = false;
+            return;
+        }
+        
+        this.ducking = false;
+        const targetVolume = this.isMuted ? 0 : this.bgmVolume;
+        this._fadeVolume(this.bgmAudio, this.bgmAudio.volume, targetVolume, this.fadeDuration);
+        this.currentBgmVolume = targetVolume;
+    }
+
+    _fadeVolume(audio, from, to, duration) {
+        if (!audio) return;
+        
+        const startTime = performance.now();
+        const delta = to - from;
+        
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            
+            audio.volume = from + (delta * easeProgress);
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        };
+        
+        requestAnimationFrame(animate);
+    }
+
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        
+        if (this.bgmAudio) {
+            if (this.isMuted) {
+                this._fadeVolume(this.bgmAudio, this.bgmAudio.volume, 0, 200);
+            } else {
+                const targetVolume = this.ducking ? this.bgmDuckedVolume : this.bgmVolume;
+                this._fadeVolume(this.bgmAudio, 0, targetVolume, 200);
+                this.currentBgmVolume = targetVolume;
+            }
+        }
+        
+        if (this.narrationAudio) {
+            this.narrationAudio.volume = this.isMuted ? 0 : 1;
+        }
+        
+        return this.isMuted;
+    }
+
+    setBgmVolume(volume) {
+        this.bgmVolume = Math.max(0, Math.min(1, volume / 100));
+        if (this.bgmAudio && !this.ducking && !this.isMuted) {
+            this.bgmAudio.volume = this.bgmVolume;
+            this.currentBgmVolume = this.bgmVolume;
+        }
+    }
+
+    resumeBgm() {
+        if (this.bgmUrl && this.bgmEnabled && !this.isBgmPlaying) {
+            this._playBgm();
+        }
+    }
+
+    pauseBgm() {
+        if (this.bgmAudio && this.isBgmPlaying) {
+            this.bgmAudio.pause();
+            this.isBgmPlaying = false;
+        }
+    }
+
+    destroy() {
+        this.stopNarration();
+        
+        if (this.bgmAudio) {
+            this.bgmAudio.pause();
+            this.bgmAudio.currentTime = 0;
+            this.bgmAudio = null;
+        }
+        
+        this.isBgmPlaying = false;
+        this.isNarrationPlaying = false;
+        this.pendingBgmPlay = false;
+        this.ducking = false;
+        
+        this._eventListeners.forEach(({ event, handler }) => {
+            document.removeEventListener(event, handler);
+        });
+        this._eventListeners = [];
+        this._userInteractionHandler = null;
+    }
+}

@@ -83,15 +83,20 @@ function renderEmpty(message = '暂无数据', icon = '&#128218;') {
 }
 
 function createUploadArea(id, accept = 'image/*', multiple = false) {
+    const isAudio = accept.includes('audio');
+    const icon = isAudio ? '&#127925;' : '&#128247;';
+    const title = isAudio ? '点击或拖拽上传音频' : '点击或拖拽上传图片';
+    const desc = isAudio ? '支持 MP3、WAV、OGG、M4A、AAC 格式，最大 50MB' : '支持 JPG、PNG、GIF、WebP 格式，最大 10MB';
+    
     return `
         <div class="upload-area" id="upload-area-${id}"
             ondragover="event.preventDefault();this.classList.add('dragover')"
             ondragleave="this.classList.remove('dragover')"
             ondrop="handleDrop(event,'${id}')"
             onclick="document.getElementById('file-input-${id}').click()">
-            <div class="upload-area-icon">&#128247;</div>
-            <h4>点击或拖拽上传图片</h4>
-            <p>支持 JPG、PNG、GIF、WebP 格式，最大 10MB</p>
+            <div class="upload-area-icon">${icon}</div>
+            <h4>${title}</h4>
+            <p>${desc}</p>
             <input type="file" id="file-input-${id}" accept="${accept}" ${multiple ? 'multiple' : ''}
                 style="display:none" onchange="handleFileSelect(event,'${id}')">
         </div>
@@ -115,6 +120,11 @@ async function handleDrop(event, id) {
 
 async function uploadFiles(files, id) {
     const uploadArea = document.getElementById(`upload-area-${id}`);
+    const isAudio = id === 'bgm' || id === 'narration';
+    const icon = isAudio ? '&#127925;' : '&#128247;';
+    const title = isAudio ? '点击或拖拽上传音频' : '点击或拖拽上传图片';
+    const desc = isAudio ? '支持 MP3、WAV、OGG、M4A、AAC 格式，最大 50MB' : '支持 JPG、PNG、GIF、WebP 格式，最大 10MB';
+    
     if (uploadArea) {
         uploadArea.innerHTML = '<div class="loading"><div class="spinner"></div></div><p style="margin-top:8px;font-size:13px;color:var(--gray-500)">上传中...</p>';
     }
@@ -124,11 +134,15 @@ async function uploadFiles(files, id) {
                      id === 'logo' ? 'logos' :
                      id === 'background' || id === 'bg-lib' ? 'backgrounds' :
                      id === 'cover' ? 'albums' :
-                     id === 'page' || id === 'pages' ? 'pages' : 'albums';
+                     id === 'page' || id === 'pages' ? 'pages' :
+                     id === 'bgm' ? 'bgm' :
+                     id === 'narration' ? 'narration' : 'albums';
 
         const results = [];
         for (const file of files) {
-            const res = await api.upload.image(file, type);
+            const res = isAudio 
+                ? await api.upload.audio(file, type)
+                : await api.upload.image(file, type);
             if (res.data) results.push(res.data);
         }
 
@@ -141,9 +155,9 @@ async function uploadFiles(files, id) {
 
     if (uploadArea) {
         uploadArea.innerHTML = `
-            <div class="upload-area-icon">&#128247;</div>
-            <h4>点击或拖拽上传图片</h4>
-            <p>支持 JPG、PNG、GIF、WebP 格式，最大 10MB</p>
+            <div class="upload-area-icon">${icon}</div>
+            <h4>${title}</h4>
+            <p>${desc}</p>
         `;
     }
 }
