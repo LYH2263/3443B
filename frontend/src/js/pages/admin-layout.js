@@ -29,6 +29,9 @@ function renderAdminLayout(activePage, content) {
                         <a href="#/admin/albums" class="admin-nav-item ${activePage === 'albums' ? 'active' : ''}">
                             &#128218; 画册管理
                         </a>
+                        <a href="#/admin/comments" class="admin-nav-item ${activePage === 'comments' ? 'active' : ''}">
+                            &#128172; 评论管理
+                        </a>
                         <a href="#/admin/ab-experiments" class="admin-nav-item ${activePage === 'ab-experiments' ? 'active' : ''}">
                             &#128302; A/B 实验
                         </a>

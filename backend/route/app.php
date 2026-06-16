@@ -44,7 +44,17 @@ Route::group('api/public', function () {
     Route::post('ab-experiments/assign', 'AbExperimentController@assign');
     Route::post('ab-experiments/exposure', 'AbExperimentController@recordExposure');
     Route::post('ab-experiments/click', 'AbExperimentController@recordClick');
+
+    Route::get('albums/:albumId/comments', 'CommentController@index')->pattern(['albumId' => '\d+']);
+    Route::get('comments/:commentId/replies', 'CommentController@getReplies')->pattern(['commentId' => '\d+']);
+    Route::get('albums/:albumId/comments/count', 'CommentController@count')->pattern(['albumId' => '\d+']);
 })->prefix('app\\controller\\')->middleware(\app\middleware\CorsMiddleware::class);
+
+// Public comment routes (require login)
+Route::group('api/public', function () {
+    Route::post('comments', 'CommentController@store');
+    Route::delete('comments/:id', 'CommentController@delete')->pattern(['id' => '\d+']);
+})->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AuthMiddleware::class]);
 
 // Big screen data (public, for display)
 Route::get('api/bigscreen', 'app\controller\BigScreenController@index')
@@ -130,4 +140,12 @@ Route::group('api/admin', function () {
     Route::delete('tags/:id', 'TagController@delete')->pattern(['id' => '\d+']);
     Route::get('albums/:albumId/tags', 'TagController@getAlbumTags')->pattern(['albumId' => '\d+']);
     Route::put('albums/:albumId/tags', 'TagController@syncAlbumTags')->pattern(['albumId' => '\d+']);
+
+    // Comments
+    Route::get('comments', 'AdminCommentController@index');
+    Route::get('comments/:id', 'AdminCommentController@detail')->pattern(['id' => '\d+']);
+    Route::put('comments/:id/status', 'AdminCommentController@updateStatus')->pattern(['id' => '\d+']);
+    Route::post('comments/:id/toggle-pin', 'AdminCommentController@togglePin')->pattern(['id' => '\d+']);
+    Route::delete('comments/:id', 'AdminCommentController@delete')->pattern(['id' => '\d+']);
+    Route::get('comments/stats/overview', 'AdminCommentController@stats');
 })->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AdminMiddleware::class]);

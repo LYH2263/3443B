@@ -179,6 +179,7 @@ async function loadHomeAlbums() {
                         <div class="album-card-meta">
                             <span>&#128196; ${album.page_count || 0} 页</span>
                             <span>&#128065; ${album.view_count || 0} 次浏览</span>
+                            <span>&#128172; ${album.comment_count || 0} 评论</span>
                         </div>
                     </div>
                 </div>

@@ -131,6 +131,12 @@ const api = {
         abAssign: (data) => apiRequest('/public/ab-experiments/assign', { method: 'POST', body: data }),
         abExposure: (data) => apiRequest('/public/ab-experiments/exposure', { method: 'POST', body: data }),
         abClick: (data) => apiRequest('/public/ab-experiments/click', { method: 'POST', body: data }),
+
+        comments: (albumId, params) => apiRequest(`/public/albums/${albumId}/comments?` + new URLSearchParams(params || {})),
+        commentReplies: (commentId, params) => apiRequest(`/public/comments/${commentId}/replies?` + new URLSearchParams(params || {})),
+        commentCount: (albumId) => apiRequest(`/public/albums/${albumId}/comments/count`),
+        postComment: (data) => apiRequest('/public/comments', { method: 'POST', body: data }),
+        deleteComment: (id) => apiRequest(`/public/comments/${id}`, { method: 'DELETE' }),
     },
     admin: {
         dashboard: () => apiRequest('/admin/dashboard'),
@@ -182,6 +188,13 @@ const api = {
         deleteTag: (id) => apiRequest(`/admin/tags/${id}`, { method: 'DELETE' }),
         albumTags: (albumId) => apiRequest(`/admin/albums/${albumId}/tags`),
         syncAlbumTags: (albumId, tags) => apiRequest(`/admin/albums/${albumId}/tags`, { method: 'PUT', body: { tags } }),
+
+        comments: (params) => apiRequest('/admin/comments?' + new URLSearchParams(params || {})),
+        commentDetail: (id) => apiRequest(`/admin/comments/${id}`),
+        updateCommentStatus: (id, status) => apiRequest(`/admin/comments/${id}/status`, { method: 'PUT', body: { status } }),
+        toggleCommentPin: (id) => apiRequest(`/admin/comments/${id}/toggle-pin`, { method: 'POST' }),
+        deleteComment: (id) => apiRequest(`/admin/comments/${id}`, { method: 'DELETE' }),
+        commentStats: () => apiRequest('/admin/comments/stats/overview'),
     },
     upload: {
         image: async (file, type = 'albums') => {

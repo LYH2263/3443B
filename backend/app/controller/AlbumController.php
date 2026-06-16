@@ -11,6 +11,7 @@ use app\model\User;
 use app\model\AbExperiment;
 use app\model\Tag;
 use app\model\AlbumTag;
+use app\model\Comment;
 use think\facade\Log;
 use think\facade\Validate;
 use think\Request;
@@ -48,6 +49,7 @@ class AlbumController
                 $item->qrcode_image_url = $item->qrcode_image ? get_upload_url($item->qrcode_image) : '';
                 $item->bgm_audio_url = $item->bgm_audio ? get_upload_url($item->bgm_audio) : '';
                 $item->page_count = AlbumPage::where('album_id', $item->id)->count();
+                $item->comment_count = Comment::getAlbumTotalCommentCount($item->id);
                 return $item;
             });
 
@@ -103,6 +105,7 @@ class AlbumController
                 $item->background_image_url = $item->background_image ? get_upload_url($item->background_image) : '';
                 $item->has_password = !empty($item->share_password);
                 $item->page_count = AlbumPage::where('album_id', $item->id)->count();
+                $item->comment_count = Comment::getAlbumTotalCommentCount($item->id);
                 $experiment = AbExperiment::where('album_id', $item->id)
                     ->where('status', 'running')
                     ->find();
