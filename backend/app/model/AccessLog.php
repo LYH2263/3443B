@@ -15,4 +15,14 @@ class AccessLog extends Model
         'album_id' => 'integer',
         'user_id'  => 'integer',
     ];
+
+    public function album()
+    {
+        return $this->belongsTo(Album::class, 'album_id', 'id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
+    }
 }

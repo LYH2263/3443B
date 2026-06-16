@@ -46,6 +46,10 @@ Route::group('api/public', function () {
     Route::post('ab-experiments/click', 'AbExperimentController@recordClick');
 })->prefix('app\\controller\\')->middleware(\app\middleware\CorsMiddleware::class);
 
+// Big screen data (public, for display)
+Route::get('api/bigscreen', 'app\controller\BigScreenController@index')
+    ->middleware(\app\middleware\CorsMiddleware::class);
+
 // Upload routes (require login)
 Route::group('api/upload', function () {
     Route::post('image', 'UploadController@image');

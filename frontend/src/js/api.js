@@ -200,5 +200,6 @@ const api = {
             return apiRequest('/upload/audio/delete', { method: 'POST', body: { path } });
         },
     },
+    bigscreen: () => apiRequest('/bigscreen'),
     init: () => apiRequest('/init'),
 };

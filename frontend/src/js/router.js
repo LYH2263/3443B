@@ -4,6 +4,7 @@ const routes = {
     '/register': { render: renderRegisterPage, auth: false },
     '/viewer/:id': { render: renderViewerPage, init: initViewerPage, auth: false },
     '/profile': { render: renderProfilePage, auth: true },
+    '/big-screen': { render: renderBigScreenPage, init: initBigScreen, auth: false, fullscreen: true },
     '/admin': { render: renderAdminDashboard, init: initAdminDashboard, auth: true, admin: true },
     '/admin/albums': { render: renderAdminAlbums, init: initAdminAlbums, auth: true, admin: true },
     '/admin/albums/create': { render: () => renderAdminAlbumEdit(null), init: () => initAdminAlbumEdit(null), auth: true, admin: true },
@@ -50,6 +51,11 @@ async function handleRoute() {
         window._viewerAudioCleanup = null;
     }
 
+    if (window._bigScreenCleanup) {
+        window._bigScreenCleanup();
+        window._bigScreenCleanup = null;
+    }
+
     const matched = matchRoute(path);
 
     if (!matched) {
@@ -78,6 +84,12 @@ async function handleRoute() {
         showToast('没有管理员权限', 'warning');
         window.location.hash = '#/';
         return;
+    }
+
+    if (route.fullscreen) {
+        document.body.classList.add('fullscreen-page');
+    } else {
+        document.body.classList.remove('fullscreen-page');
     }
 
     const paramValues = Object.values(params);
