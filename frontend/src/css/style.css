@@ -119,6 +119,20 @@ img { max-width: 100%; height: auto; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
+.modal {
+    display: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 9000; padding: 20px; overflow-y: auto;
+    align-items: center; justify-content: center;
+}
+.modal.show {
+    display: flex;
+    animation: fadeIn 0.2s ease;
+}
+.modal.show .modal-content {
+    animation: scaleIn 0.2s ease;
+}
+
 /* ==================== Forms ==================== */
 .form-group { margin-bottom: 20px; }
 .form-label {
@@ -999,6 +1013,31 @@ input:-webkit-autofill:focus {
 .filter-bar .form-input, .filter-bar .form-select {
     max-width: 220px;
 }
+
+.admin-page-toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+}
+.toolbar-left, .toolbar-right {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+
+.tabs {
+    display: flex; gap: 4px; border-bottom: 2px solid var(--gray-200);
+    margin-bottom: 20px;
+}
+.tab-btn {
+    padding: 10px 20px; background: none; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 500; color: var(--gray-600);
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: var(--transition);
+}
+.tab-btn:hover { color: var(--primary); }
+.tab-btn.active {
+    color: var(--primary); border-bottom-color: var(--primary);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
 
 /* Image Upload */
 .upload-area {

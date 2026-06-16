@@ -195,6 +195,29 @@ const api = {
         toggleCommentPin: (id) => apiRequest(`/admin/comments/${id}/toggle-pin`, { method: 'POST' }),
         deleteComment: (id) => apiRequest(`/admin/comments/${id}`, { method: 'DELETE' }),
         commentStats: () => apiRequest('/admin/comments/stats/overview'),
+
+        sensitiveWords: (params) => apiRequest('/admin/sensitive-words?' + new URLSearchParams(params || {})),
+        sensitiveWordStats: () => apiRequest('/admin/sensitive-words/stats'),
+        sensitiveWordDetail: (id) => apiRequest(`/admin/sensitive-words/${id}`),
+        createSensitiveWord: (data) => apiRequest('/admin/sensitive-words', { method: 'POST', body: data }),
+        updateSensitiveWord: (id, data) => apiRequest(`/admin/sensitive-words/${id}`, { method: 'PUT', body: data }),
+        deleteSensitiveWord: (id) => apiRequest(`/admin/sensitive-words/${id}`, { method: 'DELETE' }),
+        batchImportSensitiveWords: (data) => apiRequest('/admin/sensitive-words/batch-import', { method: 'POST', body: data }),
+        refreshSensitiveWordCache: () => apiRequest('/admin/sensitive-words/refresh-cache', { method: 'POST' }),
+        detectSensitiveWord: (text) => apiRequest('/admin/sensitive-words/detect', { method: 'POST', body: { text } }),
+
+        sensitiveWhitelist: (params) => apiRequest('/admin/sensitive-whitelist?' + new URLSearchParams(params || {})),
+        createSensitiveWhitelist: (data) => apiRequest('/admin/sensitive-whitelist', { method: 'POST', body: data }),
+        updateSensitiveWhitelist: (id, data) => apiRequest(`/admin/sensitive-whitelist/${id}`, { method: 'PUT', body: data }),
+        deleteSensitiveWhitelist: (id) => apiRequest(`/admin/sensitive-whitelist/${id}`, { method: 'DELETE' }),
+
+        pendingContents: (params) => apiRequest('/admin/pending-contents?' + new URLSearchParams(params || {})),
+        pendingContentStats: () => apiRequest('/admin/pending-contents/stats'),
+        pendingContentDetail: (id) => apiRequest(`/admin/pending-contents/${id}`),
+        approvePendingContent: (id, remark) => apiRequest(`/admin/pending-contents/${id}/approve`, { method: 'POST', body: { remark } }),
+        rejectPendingContent: (id, remark) => apiRequest(`/admin/pending-contents/${id}/reject`, { method: 'POST', body: { remark } }),
+        batchApprovePendingContents: (ids, remark) => apiRequest('/admin/pending-contents/batch-approve', { method: 'POST', body: { ids, remark } }),
+        batchRejectPendingContents: (ids, remark) => apiRequest('/admin/pending-contents/batch-reject', { method: 'POST', body: { ids, remark } }),
     },
     upload: {
         image: async (file, type = 'albums') => {

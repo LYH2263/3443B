@@ -5,6 +5,8 @@ namespace app\controller;
 use app\model\Comment;
 use app\model\Album;
 use app\model\User;
+use app\model\PendingContent;
+use app\service\SensitiveWordService;
 use think\Request;
 use think\facade\Log;
 
@@ -148,14 +150,35 @@ class CommentController
 
         $safeContent = htmlspecialchars($content, ENT_QUOTES, 'UTF-8');
 
+        $sensitiveService = new SensitiveWordService();
+        $contentResult = $sensitiveService->filterText(
+            $safeContent,
+            PendingContent::TYPE_COMMENT,
+            0,
+            'content',
+            $userId
+        );
+        if (!$contentResult['pass']) {
+            return json_error($contentResult['error']);
+        }
+
         $comment = new Comment();
         $comment->album_id = $albumId;
         $comment->user_id = $userId;
         $comment->parent_id = $parentId;
         $comment->reply_to_user_id = $replyToUserId;
-        $comment->content = $safeContent;
-        $comment->status = Comment::STATUS_NORMAL;
+        $comment->content = $contentResult['content'];
+        $comment->status = $contentResult['need_review'] ? Comment::STATUS_PENDING : Comment::STATUS_NORMAL;
         $comment->save();
+
+        if ($contentResult['need_review']) {
+            PendingContent::where('content_type', PendingContent::TYPE_COMMENT)
+                ->where('target_id', 0)
+                ->where('submitter_id', $userId)
+                ->order('id', 'desc')
+                ->limit(1)
+                ->update(['target_id' => $comment->id]);
+        }
 
         if ($parentComment) {
             $parentComment->reply_count = Comment::where('parent_id', $parentId)
@@ -169,7 +192,10 @@ class CommentController
 
         Log::info("用户 {$userId} 发表评论: {$comment->id} on album {$albumId}");
 
-        return json_success($comment, '评论发表成功');
+        return json_success([
+            'comment' => $comment,
+            'need_review' => $contentResult['need_review'],
+        ], $contentResult['need_review'] ? '评论已提交，等待审核' : '评论发表成功');
     }
 
     public function delete(Request $request, $id)

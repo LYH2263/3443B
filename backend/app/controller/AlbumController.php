@@ -12,6 +12,8 @@ use app\model\AbExperiment;
 use app\model\Tag;
 use app\model\AlbumTag;
 use app\model\Comment;
+use app\model\PendingContent;
+use app\service\SensitiveWordService;
 use think\facade\Log;
 use think\facade\Validate;
 use think\Request;
@@ -280,9 +282,34 @@ class AlbumController
             return json_error($validate->getError());
         }
 
+        $sensitiveService = new SensitiveWordService();
+
+        $titleResult = $sensitiveService->filterText(
+            $data['title'],
+            PendingContent::TYPE_ALBUM_TITLE,
+            0,
+            'title',
+            $request->uid
+        );
+        if (!$titleResult['pass']) {
+            return json_error($titleResult['error']);
+        }
+
+        $description = $data['description'] ?? '';
+        $descResult = $sensitiveService->filterText(
+            $description,
+            PendingContent::TYPE_ALBUM_DESCRIPTION,
+            0,
+            'description',
+            $request->uid
+        );
+        if (!$descResult['pass']) {
+            return json_error($descResult['error']);
+        }
+
         $album = new Album();
-        $album->title = $data['title'];
-        $album->description = $data['description'] ?? '';
+        $album->title = $titleResult['content'];
+        $album->description = $descResult['content'];
         $album->cover_image = $data['cover_image'] ?? '';
         $album->background_image = $data['background_image'] ?? '';
         $album->category_id = $data['category_id'] ?? null;
@@ -299,9 +326,29 @@ class AlbumController
         $album->creator_id = $request->uid;
         $album->save();
 
+        if ($titleResult['need_review']) {
+            PendingContent::where('content_type', PendingContent::TYPE_ALBUM_TITLE)
+                ->where('target_id', 0)
+                ->where('submitter_id', $request->uid)
+                ->order('id', 'desc')
+                ->limit(1)
+                ->update(['target_id' => $album->id]);
+        }
+        if ($descResult['need_review']) {
+            PendingContent::where('content_type', PendingContent::TYPE_ALBUM_DESCRIPTION)
+                ->where('target_id', 0)
+                ->where('submitter_id', $request->uid)
+                ->order('id', 'desc')
+                ->limit(1)
+                ->update(['target_id' => $album->id]);
+        }
+
         Log::info("创建画册: {$album->title} (ID: {$album->id}) by user {$request->uid}");
 
-        return json_success($album, '画册创建成功');
+        return json_success([
+            'album' => $album,
+            'need_review' => $titleResult['need_review'] || $descResult['need_review'],
+        ], '画册创建成功');
     }
 
     public function update(Request $request, $id)
@@ -317,11 +364,40 @@ class AlbumController
             ->where('status', 'running')
             ->find();
 
+        $sensitiveService = new SensitiveWordService();
+        $needReview = false;
+
         if (isset($data['title'])) {
             if (empty($data['title']) || mb_strlen($data['title']) > 200) {
                 return json_error('画册标题长度为1-200个字符');
             }
-            $album->title = $data['title'];
+            $titleResult = $sensitiveService->filterText(
+                $data['title'],
+                PendingContent::TYPE_ALBUM_TITLE,
+                $id,
+                'title',
+                $request->uid
+            );
+            if (!$titleResult['pass']) {
+                return json_error($titleResult['error']);
+            }
+            $album->title = $titleResult['content'];
+            if ($titleResult['need_review']) $needReview = true;
+        }
+
+        if (isset($data['description'])) {
+            $descResult = $sensitiveService->filterText(
+                $data['description'],
+                PendingContent::TYPE_ALBUM_DESCRIPTION,
+                $id,
+                'description',
+                $request->uid
+            );
+            if (!$descResult['pass']) {
+                return json_error($descResult['error']);
+            }
+            $data['description'] = $descResult['content'];
+            if ($descResult['need_review']) $needReview = true;
         }
 
         $fields = ['description', 'cover_image', 'background_image', 'category_id',
@@ -341,7 +417,10 @@ class AlbumController
 
         Log::info("更新画册: {$album->title} (ID: {$album->id}) by user {$request->uid}");
 
-        return json_success($album, '画册更新成功');
+        return json_success([
+            'album' => $album,
+            'need_review' => $needReview,
+        ], '画册更新成功');
     }
 
     public function delete(Request $request, $id)

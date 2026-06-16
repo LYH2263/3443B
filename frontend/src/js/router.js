@@ -17,6 +17,8 @@ const routes = {
     '/admin/categories': { render: renderAdminCategories, init: initAdminCategories, auth: true, admin: true },
     '/admin/backgrounds': { render: renderAdminBackgrounds, init: initAdminBackgrounds, auth: true, admin: true },
     '/admin/comments': { render: renderAdminCommentsPage, init: initAdminCommentsPage, auth: true, admin: true },
+    '/admin/sensitive-words': { render: renderAdminSensitiveWords, init: initAdminSensitiveWords, auth: true, admin: true },
+    '/admin/pending-contents': { render: renderAdminPendingContents, init: initAdminPendingContents, auth: true, admin: true },
 };
 
 function matchRoute(path) {

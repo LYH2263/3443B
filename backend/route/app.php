@@ -148,4 +148,30 @@ Route::group('api/admin', function () {
     Route::post('comments/:id/toggle-pin', 'AdminCommentController@togglePin')->pattern(['id' => '\d+']);
     Route::delete('comments/:id', 'AdminCommentController@delete')->pattern(['id' => '\d+']);
     Route::get('comments/stats/overview', 'AdminCommentController@stats');
+
+    // Sensitive Words
+    Route::get('sensitive-words', 'SensitiveWordController@index');
+    Route::get('sensitive-words/stats', 'SensitiveWordController@stats');
+    Route::get('sensitive-words/:id', 'SensitiveWordController@detail')->pattern(['id' => '\d+']);
+    Route::post('sensitive-words', 'SensitiveWordController@store');
+    Route::put('sensitive-words/:id', 'SensitiveWordController@update')->pattern(['id' => '\d+']);
+    Route::delete('sensitive-words/:id', 'SensitiveWordController@delete')->pattern(['id' => '\d+']);
+    Route::post('sensitive-words/batch-import', 'SensitiveWordController@batchImport');
+    Route::post('sensitive-words/refresh-cache', 'SensitiveWordController@refreshCache');
+    Route::post('sensitive-words/detect', 'SensitiveWordController@detect');
+
+    // Sensitive Whitelist
+    Route::get('sensitive-whitelist', 'SensitiveWordController@whitelistIndex');
+    Route::post('sensitive-whitelist', 'SensitiveWordController@whitelistStore');
+    Route::put('sensitive-whitelist/:id', 'SensitiveWordController@whitelistUpdate')->pattern(['id' => '\d+']);
+    Route::delete('sensitive-whitelist/:id', 'SensitiveWordController@whitelistDelete')->pattern(['id' => '\d+']);
+
+    // Pending Contents
+    Route::get('pending-contents', 'PendingContentController@index');
+    Route::get('pending-contents/stats', 'PendingContentController@stats');
+    Route::get('pending-contents/:id', 'PendingContentController@detail')->pattern(['id' => '\d+']);
+    Route::post('pending-contents/:id/approve', 'PendingContentController@approve')->pattern(['id' => '\d+']);
+    Route::post('pending-contents/:id/reject', 'PendingContentController@reject')->pattern(['id' => '\d+']);
+    Route::post('pending-contents/batch-approve', 'PendingContentController@batchApprove');
+    Route::post('pending-contents/batch-reject', 'PendingContentController@batchReject');
 })->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AdminMiddleware::class]);

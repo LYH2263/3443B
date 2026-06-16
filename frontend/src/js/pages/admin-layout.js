@@ -32,6 +32,12 @@ function renderAdminLayout(activePage, content) {
                         <a href="#/admin/comments" class="admin-nav-item ${activePage === 'comments' ? 'active' : ''}">
                             &#128172; 评论管理
                         </a>
+                        <a href="#/admin/sensitive-words" class="admin-nav-item ${activePage === 'sensitive-words' ? 'active' : ''}">
+                            &#128683; 敏感词库
+                        </a>
+                        <a href="#/admin/pending-contents" class="admin-nav-item ${activePage === 'pending-contents' ? 'active' : ''}">
+                            &#128221; 待审内容
+                        </a>
                         <a href="#/admin/ab-experiments" class="admin-nav-item ${activePage === 'ab-experiments' ? 'active' : ''}">
                             &#128302; A/B 实验
                         </a>

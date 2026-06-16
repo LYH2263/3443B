@@ -164,9 +164,25 @@ function showConfirmModal(title, message, onConfirm) {
 }
 
 function closeModal(event) {
-    if (event.target.classList.contains('modal-overlay')) {
+    if (event && event.target && event.target.classList.contains('modal-overlay')) {
         document.getElementById('modal-container').innerHTML = '';
     }
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('show');
+}
+
+function closeModalById(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('show');
+}
+
+function renderPaginationAndInsert(containerId, total, page, limit, callbackName) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = renderPagination(total, page, limit, callbackName);
 }
 
 function getLogoSvg() {
