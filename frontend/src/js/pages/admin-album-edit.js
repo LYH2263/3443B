@@ -1,4 +1,4 @@
-let editAlbumState = { album: null, categories: [], levels: [], backgrounds: [], pages: [], isNew: true, previewAudio: null };
+let editAlbumState = { album: null, categories: [], levels: [], backgrounds: [], pages: [], isNew: true, previewAudio: null, abExperiment: null };
 
 function renderAdminAlbumEdit(id) {
     editAlbumState.isNew = !id;
@@ -29,6 +29,7 @@ async function initAdminAlbumEdit(id) {
             const albumRes = await api.admin.albumDetail(id);
             editAlbumState.album = albumRes.data;
             editAlbumState.pages = albumRes.data.pages || [];
+            editAlbumState.abExperiment = albumRes.data.ab_experiment || null;
         } else {
             editAlbumState.album = {
                 title: '', description: '', cover_image: '', background_image: '',
@@ -115,11 +116,25 @@ function renderAlbumEditForm(id) {
                 <div class="card" style="margin-bottom:24px">
                     <div class="card-header"><h2>封面与背景</h2></div>
                     <div class="card-body">
+                        ${editAlbumState.abExperiment && editAlbumState.abExperiment.status === 'running' ? `
+                            <div class="ab-experiment-warning">
+                                <span>&#9888;</span> 该画册正在进行A/B封面实验，封面图片已被锁定，无法修改。如需修改请先结束实验。
+                            </div>
+                        ` : ''}
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                             <div>
                                 <label class="form-label">封面图片</label>
-                                ${createUploadArea('cover')}
-                                <div id="cover-preview">${coverPreview}</div>
+                                ${editAlbumState.abExperiment && editAlbumState.abExperiment.status === 'running' ? `
+                                    <div class="upload-area upload-area-disabled">
+                                        <div class="upload-area-icon">&#128274;</div>
+                                        <h4>实验进行中，封面已锁定</h4>
+                                        <p>请先结束A/B实验后再修改封面</p>
+                                    </div>
+                                    <div id="cover-preview">${coverPreview}</div>
+                                ` : `
+                                    ${createUploadArea('cover')}
+                                    <div id="cover-preview">${coverPreview}</div>
+                                `}
                             </div>
                             <div>
                                 <label class="form-label">背景图片</label>
@@ -142,6 +157,8 @@ function renderAlbumEditForm(id) {
                         </div>
                     </div>
             </div>
+
+                ${id ? renderAbExperimentCard(id, a) : ''}
 
                 ${id ? `
                 <div class="card" style="margin-bottom:24px">
@@ -353,7 +370,7 @@ async function saveAlbum(id) {
         qrcode_text_line2: document.getElementById('qr-text2').value.trim(),
     };
 
-    if (window._albumCoverPath) data.cover_image = window._albumCoverPath;
+    if (window._albumCoverPath && !(editAlbumState.abExperiment && editAlbumState.abExperiment.status === 'running')) data.cover_image = window._albumCoverPath;
     if (window._albumBgPath) data.background_image = window._albumBgPath;
     if (window._albumLogoPath) data.qrcode_logo = window._albumLogoPath;
     if (window._albumBgmPath !== null) data.bgm_audio = window._albumBgmPath;
@@ -696,4 +713,235 @@ async function uploadNarrationFile(file, pageId) {
             `;
         }
     }
+}
+
+window._abCoverAPath = null;
+window._abCoverBPath = null;
+
+function renderAbExperimentCard(id, album) {
+    const exp = editAlbumState.abExperiment;
+
+    if (!exp) {
+        return `
+            <div class="card" style="margin-bottom:24px">
+                <div class="card-header">
+                    <h2>&#128302; A/B 封面实验</h2>
+                </div>
+                <div class="card-body">
+                    <p style="color:var(--gray-500);margin-bottom:16px">为该画册配置两张封面进行A/B测试，科学比较哪张封面更吸引点击</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                        <div>
+                            <label class="form-label">封面 A</label>
+                            ${createUploadArea('ab-cover-a')}
+                            <div id="ab-cover-a-preview"></div>
+                        </div>
+                        <div>
+                            <label class="form-label">封面 B</label>
+                            ${createUploadArea('ab-cover-b')}
+                            <div id="ab-cover-b-preview"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="startAbExperiment(${id})" style="margin-top:16px">&#9654; 开启实验</button>
+                </div>
+            </div>
+        `;
+    }
+
+    const statusMap = {
+        running: '<span class="badge badge-success">运行中</span>',
+        paused: '<span class="badge badge-warning">已暂停</span>',
+        completed: '<span class="badge badge-gray">已完成</span>'
+    };
+
+    const stats = exp.stats || {};
+    const aCtr = stats.a_ctr || 0;
+    const bCtr = stats.b_ctr || 0;
+    const leader = stats.leader;
+    const hasMinSample = stats.has_min_sample;
+    const significant = stats.significant;
+
+    return `
+        <div class="card" style="margin-bottom:24px">
+            <div class="card-header">
+                <h2>&#128302; A/B 封面实验</h2>
+                ${statusMap[exp.status] || ''}
+            </div>
+            <div class="card-body">
+                <div class="ab-experiment-stats">
+                    <div class="ab-variant-card ${leader === 'a' && significant ? 'ab-variant-leading' : ''} ${exp.winner === 'a' ? 'ab-variant-winner' : ''}">
+                        <div class="ab-variant-label">封面 A</div>
+                        <div class="ab-variant-cover">
+                            <img src="${getImageUrl(exp.cover_a_image_url)}" alt="封面A" onerror="this.src='${getPlaceholderImage()}'">
+                        </div>
+                        <div class="ab-variant-stats">
+                            <div class="ab-stat"><span class="ab-stat-label">曝光</span><span class="ab-stat-value">${stats.a_exposures || 0}</span></div>
+                            <div class="ab-stat"><span class="ab-stat-label">点击</span><span class="ab-stat-value">${stats.a_clicks || 0}</span></div>
+                            <div class="ab-stat"><span class="ab-stat-label">点击率</span><span class="ab-stat-value">${aCtr}%</span></div>
+                            ${leader === 'a' && significant ? '<div class="ab-stat ab-stat-significant">&#10004; 显著领先</div>' : ''}
+                            ${leader === 'a' && !significant && hasMinSample ? '<div class="ab-stat ab-stat-trending">&#8593; 领先中</div>' : ''}
+                        </div>
+                    </div>
+                    <div class="ab-variant-card ${leader === 'b' && significant ? 'ab-variant-leading' : ''} ${exp.winner === 'b' ? 'ab-variant-winner' : ''}">
+                        <div class="ab-variant-label">封面 B</div>
+                        <div class="ab-variant-cover">
+                            <img src="${getImageUrl(exp.cover_b_image_url)}" alt="封面B" onerror="this.src='${getPlaceholderImage()}'">
+                        </div>
+                        <div class="ab-variant-stats">
+                            <div class="ab-stat"><span class="ab-stat-label">曝光</span><span class="ab-stat-value">${stats.b_exposures || 0}</span></div>
+                            <div class="ab-stat"><span class="ab-stat-label">点击</span><span class="ab-stat-value">${stats.b_clicks || 0}</span></div>
+                            <div class="ab-stat"><span class="ab-stat-label">点击率</span><span class="ab-stat-value">${bCtr}%</span></div>
+                            ${leader === 'b' && significant ? '<div class="ab-stat ab-stat-significant">&#10004; 显著领先</div>' : ''}
+                            ${leader === 'b' && !significant && hasMinSample ? '<div class="ab-stat ab-stat-trending">&#8593; 领先中</div>' : ''}
+                        </div>
+                    </div>
+                </div>
+
+                ${!hasMinSample && exp.status === 'running' ? `
+                    <div class="ab-experiment-tip">
+                        &#8505; 样本量不足（每个版本至少需要100次曝光），暂无法判定胜出版本
+                    </div>
+                ` : ''}
+
+                ${hasMinSample && !significant && exp.status === 'running' ? `
+                    <div class="ab-experiment-tip">
+                        &#8505; 当前两版本点击率差异未达到统计显著性，建议继续运行实验积累更多数据
+                    </div>
+                ` : ''}
+
+                ${exp.status === 'completed' ? `
+                    <div class="ab-experiment-result">
+                        实验已结束，胜出封面：封面 ${exp.winner ? exp.winner.toUpperCase() : '-'}
+                    </div>
+                ` : ''}
+
+                <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+                    ${exp.status === 'running' ? `
+                        <button class="btn btn-secondary btn-sm" onclick="pauseAbExperiment(${exp.id})">&#9208; 暂停实验</button>
+                        ${significant || hasMinSample ? `
+                            <button class="btn btn-primary btn-sm" onclick="adoptAbCover(${exp.id}, '${leader || 'a'}')">&#10004; 采用封面${(leader || 'a').toUpperCase()}结束实验</button>
+                        ` : ''}
+                        ${!significant && hasMinSample ? `
+                            <button class="btn btn-secondary btn-sm" onclick="forceAdoptAbCover(${exp.id})">&#9889; 强制结束实验</button>
+                        ` : ''}
+                    ` : ''}
+                    ${exp.status === 'paused' ? `
+                        <button class="btn btn-success btn-sm" onclick="resumeAbExperiment(${exp.id})">&#9654; 恢复实验</button>
+                    ` : ''}
+                    ${exp.status !== 'completed' ? `
+                        <button class="btn btn-secondary btn-sm" onclick="resetAbExperiment(${exp.id}, ${id})">&#128260; 重置数据</button>
+                    ` : ''}
+                    <button class="btn btn-danger btn-sm" onclick="deleteAbExperiment(${exp.id}, ${id})">&#128465; 删除实验</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+window['onUploadComplete_ab-cover-a'] = function (results) {
+    if (results.length > 0) {
+        window._abCoverAPath = results[0].path;
+        document.getElementById('ab-cover-a-preview').innerHTML = `
+            <div class="upload-preview"><div class="upload-preview-item">
+                <img src="${getImageUrl(results[0].url || results[0].path)}" alt="封面A">
+            </div></div>
+        `;
+        showToast('封面A上传成功', 'success');
+    }
+};
+
+window['onUploadComplete_ab-cover-b'] = function (results) {
+    if (results.length > 0) {
+        window._abCoverBPath = results[0].path;
+        document.getElementById('ab-cover-b-preview').innerHTML = `
+            <div class="upload-preview"><div class="upload-preview-item">
+                <img src="${getImageUrl(results[0].url || results[0].path)}" alt="封面B">
+            </div></div>
+        `;
+        showToast('封面B上传成功', 'success');
+    }
+};
+
+async function startAbExperiment(albumId) {
+    if (!window._abCoverAPath) {
+        showToast('请上传封面A', 'warning');
+        return;
+    }
+    if (!window._abCoverBPath) {
+        showToast('请上传封面B', 'warning');
+        return;
+    }
+
+    showConfirmModal('开启A/B实验', '开启后，前台访客将随机看到封面A或B，封面图片将被锁定不可修改。确定开启？', async () => {
+        try {
+            await api.admin.createAbExperiment({
+                album_id: albumId,
+                cover_a_image: window._abCoverAPath,
+                cover_b_image: window._abCoverBPath
+            });
+            showToast('A/B实验已开启', 'success');
+            window._abCoverAPath = null;
+            window._abCoverBPath = null;
+            initAdminAlbumEdit(albumId);
+        } catch (e) {}
+    });
+}
+
+async function pauseAbExperiment(expId) {
+    try {
+        await api.admin.updateAbExperiment(expId, { status: 'paused' });
+        showToast('实验已暂停', 'success');
+        initAdminAlbumEdit(editAlbumState.album.id);
+    } catch (e) {}
+}
+
+async function resumeAbExperiment(expId) {
+    try {
+        await api.admin.updateAbExperiment(expId, { status: 'running' });
+        showToast('实验已恢复', 'success');
+        initAdminAlbumEdit(editAlbumState.album.id);
+    } catch (e) {}
+}
+
+async function adoptAbCover(expId, variant) {
+    showConfirmModal('采用封面并结束实验', `确定采用封面${variant.toUpperCase()}作为正式封面并结束实验？该封面将替换当前画册封面。`, async () => {
+        try {
+            await api.admin.adoptAbExperiment(expId, { winner: variant });
+            showToast(`已采用封面${variant.toUpperCase()}并结束实验`, 'success');
+            initAdminAlbumEdit(editAlbumState.album.id);
+        } catch (e) {}
+    });
+}
+
+async function forceAdoptAbCover(expId) {
+    const exp = editAlbumState.abExperiment;
+    const stats = exp.stats || {};
+    const leader = stats.leader || 'a';
+
+    showConfirmModal('强制结束实验', `当前差异未达统计显著性。确定强制采用封面${leader.toUpperCase()}结束实验？`, async () => {
+        try {
+            await api.admin.forceAdoptAbExperiment(expId, { winner: leader });
+            showToast(`已强制采用封面${leader.toUpperCase()}并结束实验`, 'success');
+            initAdminAlbumEdit(editAlbumState.album.id);
+        } catch (e) {}
+    });
+}
+
+async function resetAbExperiment(expId, albumId) {
+    showConfirmModal('重置实验数据', '确定要清零该实验的所有曝光和点击数据？此操作不可恢复。', async () => {
+        try {
+            await api.admin.resetAbExperiment(expId);
+            showToast('实验数据已清零', 'success');
+            initAdminAlbumEdit(albumId);
+        } catch (e) {}
+    });
+}
+
+async function deleteAbExperiment(expId, albumId) {
+    showConfirmModal('删除实验', '确定要删除该A/B实验及其所有数据？此操作不可恢复。', async () => {
+        try {
+            await api.admin.deleteAbExperiment(expId);
+            showToast('实验已删除', 'success');
+            initAdminAlbumEdit(albumId);
+        } catch (e) {}
+    });
 }

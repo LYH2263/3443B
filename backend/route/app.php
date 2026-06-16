@@ -32,6 +32,10 @@ Route::group('api/public', function () {
     Route::post('albums/:id/verify', 'AlbumController@publicDetail');
     Route::get('albums', 'AlbumController@publicList');
     Route::get('categories', 'AlbumController@categories');
+    Route::get('ab-experiments', 'AbExperimentController@publicExperiments');
+    Route::post('ab-experiments/assign', 'AbExperimentController@assign');
+    Route::post('ab-experiments/exposure', 'AbExperimentController@recordExposure');
+    Route::post('ab-experiments/click', 'AbExperimentController@recordClick');
 })->prefix('app\\controller\\')->middleware(\app\middleware\CorsMiddleware::class);
 
 // Upload routes (require login)
@@ -88,4 +92,14 @@ Route::group('api/admin', function () {
     Route::post('backgrounds', 'BackgroundImageController@store');
     Route::get('backgrounds', 'BackgroundImageController@index');
     Route::delete('backgrounds/:id', 'BackgroundImageController@delete');
+
+    // A/B Experiments
+    Route::get('ab-experiments', 'AbExperimentController@index');
+    Route::get('ab-experiments/:id', 'AbExperimentController@detail')->pattern(['id' => '\d+']);
+    Route::post('ab-experiments', 'AbExperimentController@store');
+    Route::put('ab-experiments/:id', 'AbExperimentController@update');
+    Route::post('ab-experiments/:id/adopt', 'AbExperimentController@adopt');
+    Route::post('ab-experiments/:id/force-adopt', 'AbExperimentController@forceAdopt');
+    Route::post('ab-experiments/:id/reset', 'AbExperimentController@reset');
+    Route::delete('ab-experiments/:id', 'AbExperimentController@delete');
 })->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AdminMiddleware::class]);

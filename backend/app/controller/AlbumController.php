@@ -8,6 +8,7 @@ use app\model\AlbumCategory;
 use app\model\AccessLog;
 use app\model\MemberLevel;
 use app\model\User;
+use app\model\AbExperiment;
 use think\facade\Log;
 use think\facade\Validate;
 use think\Request;
@@ -100,6 +101,18 @@ class AlbumController
                 $item->background_image_url = $item->background_image ? get_upload_url($item->background_image) : '';
                 $item->has_password = !empty($item->share_password);
                 $item->page_count = AlbumPage::where('album_id', $item->id)->count();
+                $experiment = AbExperiment::where('album_id', $item->id)
+                    ->where('status', 'running')
+                    ->find();
+                if ($experiment) {
+                    $item->ab_experiment = [
+                        'id' => $experiment->id,
+                        'cover_a_image_url' => $experiment->cover_a_image ? get_upload_url($experiment->cover_a_image) : '',
+                        'cover_b_image_url' => $experiment->cover_b_image ? get_upload_url($experiment->cover_b_image) : '',
+                    ];
+                } else {
+                    $item->ab_experiment = null;
+                }
                 unset($item->share_password);
                 return $item;
             });
@@ -124,6 +137,23 @@ class AlbumController
         $album->qrcode_image_url = $album->qrcode_image ? get_upload_url($album->qrcode_image) : '';
         $album->qrcode_logo_url = $album->qrcode_logo ? get_upload_url($album->qrcode_logo) : '';
         $album->bgm_audio_url = $album->bgm_audio ? get_upload_url($album->bgm_audio) : '';
+
+        $experiment = AbExperiment::where('album_id', $id)->find();
+        if ($experiment) {
+            $album->ab_experiment = [
+                'id' => $experiment->id,
+                'cover_a_image' => $experiment->cover_a_image,
+                'cover_b_image' => $experiment->cover_b_image,
+                'cover_a_image_url' => $experiment->cover_a_image ? get_upload_url($experiment->cover_a_image) : '',
+                'cover_b_image_url' => $experiment->cover_b_image ? get_upload_url($experiment->cover_b_image) : '',
+                'status' => $experiment->status,
+                'winner' => $experiment->winner,
+                'started_at' => $experiment->started_at,
+                'stats' => $experiment->getStats(),
+            ];
+        } else {
+            $album->ab_experiment = null;
+        }
 
         $pages = $album->pages->each(function ($page) {
             $page->image_url = $page->image ? get_upload_url($page->image) : '';
@@ -274,6 +304,10 @@ class AlbumController
 
         $data = getRequestData($request);
 
+        $runningExperiment = AbExperiment::where('album_id', $id)
+            ->where('status', 'running')
+            ->find();
+
         if (isset($data['title'])) {
             if (empty($data['title']) || mb_strlen($data['title']) > 200) {
                 return json_error('画册标题长度为1-200个字符');
@@ -287,6 +321,9 @@ class AlbumController
 
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
+                if ($runningExperiment && $field === 'cover_image') {
+                    return json_error('该画册正在进行A/B封面实验，无法修改封面图片。请先结束实验。');
+                }
                 $album->$field = $data[$field];
             }
         }

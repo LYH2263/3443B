@@ -120,7 +120,7 @@ async function handleDrop(event, id) {
 
 async function uploadFiles(files, id) {
     const uploadArea = document.getElementById(`upload-area-${id}`);
-    const isAudio = id === 'bgm' || id === 'narration';
+    const isAudio = id === 'bgm' || id.startsWith('narration');
     const icon = isAudio ? '&#127925;' : '&#128247;';
     const title = isAudio ? '点击或拖拽上传音频' : '点击或拖拽上传图片';
     const desc = isAudio ? '支持 MP3、WAV、OGG、M4A、AAC 格式，最大 50MB' : '支持 JPG、PNG、GIF、WebP 格式，最大 10MB';
@@ -133,10 +133,10 @@ async function uploadFiles(files, id) {
         const type = id === 'avatar' ? 'avatars' :
                      id === 'logo' ? 'logos' :
                      id === 'background' || id === 'bg-lib' ? 'backgrounds' :
-                     id === 'cover' ? 'albums' :
+                     id === 'cover' || id === 'ab-cover-a' || id === 'ab-cover-b' ? 'albums' :
                      id === 'page' || id === 'pages' ? 'pages' :
                      id === 'bgm' ? 'bgm' :
-                     id === 'narration' ? 'narration' : 'albums';
+                     id.startsWith('narration') ? 'narration' : 'albums';
 
         const results = [];
         for (const file of files) {

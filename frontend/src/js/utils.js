@@ -5,6 +5,57 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+function getVisitorFingerprint() {
+    let fp = localStorage.getItem('flipbook_fp');
+    if (fp) return fp;
+    const raw = [
+        screen.width, screen.height, screen.colorDepth,
+        new Date().getTimezoneOffset(),
+        navigator.language, navigator.platform,
+        navigator.hardwareConcurrency || 0
+    ].join('|');
+    let hash = 0;
+    for (let i = 0; i < raw.length; i++) {
+        const char = raw.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    fp = 'fp_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
+    localStorage.setItem('flipbook_fp', fp);
+    return fp;
+}
+
+function getAbVariant(albumId) {
+    const fp = getVisitorFingerprint();
+    const key = `flipbook_ab_${albumId}`;
+    const cached = localStorage.getItem(key);
+    if (cached) return cached;
+    let hash = 0;
+    const str = albumId + '_' + fp;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    const variant = Math.abs(hash) % 2 === 0 ? 'a' : 'b';
+    localStorage.setItem(key, variant);
+    return variant;
+}
+
+function getAbAssignment(albumId) {
+    const key = `flipbook_ab_assign_${albumId}`;
+    const cached = localStorage.getItem(key);
+    if (cached) {
+        try { return JSON.parse(cached); } catch(e) {}
+    }
+    return null;
+}
+
+function setAbAssignment(albumId, assignment) {
+    const key = `flipbook_ab_assign_${albumId}`;
+    localStorage.setItem(key, JSON.stringify(assignment));
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return '';
     const d = new Date(dateStr);

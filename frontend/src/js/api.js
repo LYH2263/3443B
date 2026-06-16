@@ -124,6 +124,10 @@ const api = {
         },
         verifyPassword: (id, password) => apiRequest(`/public/albums/${id}/verify`, { method: 'POST', body: { password } }),
         categories: () => apiRequest('/public/categories'),
+        abExperiments: () => apiRequest('/public/ab-experiments'),
+        abAssign: (data) => apiRequest('/public/ab-experiments/assign', { method: 'POST', body: data }),
+        abExposure: (data) => apiRequest('/public/ab-experiments/exposure', { method: 'POST', body: data }),
+        abClick: (data) => apiRequest('/public/ab-experiments/click', { method: 'POST', body: data }),
     },
     admin: {
         dashboard: () => apiRequest('/admin/dashboard'),
@@ -154,6 +158,14 @@ const api = {
         backgrounds: () => apiRequest('/admin/backgrounds'),
         addBackground: (data) => apiRequest('/admin/backgrounds', { method: 'POST', body: data }),
         deleteBackground: (id) => apiRequest(`/admin/backgrounds/${id}`, { method: 'DELETE' }),
+        abExperiments: (params) => apiRequest('/admin/ab-experiments?' + new URLSearchParams(params || {})),
+        abExperimentDetail: (id) => apiRequest(`/admin/ab-experiments/${id}`),
+        createAbExperiment: (data) => apiRequest('/admin/ab-experiments', { method: 'POST', body: data }),
+        updateAbExperiment: (id, data) => apiRequest(`/admin/ab-experiments/${id}`, { method: 'PUT', body: data }),
+        adoptAbExperiment: (id, data) => apiRequest(`/admin/ab-experiments/${id}/adopt`, { method: 'POST', body: data }),
+        forceAdoptAbExperiment: (id, data) => apiRequest(`/admin/ab-experiments/${id}/force-adopt`, { method: 'POST', body: data }),
+        resetAbExperiment: (id) => apiRequest(`/admin/ab-experiments/${id}/reset`, { method: 'POST' }),
+        deleteAbExperiment: (id) => apiRequest(`/admin/ab-experiments/${id}`, { method: 'DELETE' }),
     },
     upload: {
         image: async (file, type = 'albums') => {

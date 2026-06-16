@@ -1,4 +1,4 @@
-let homeState = { albums: [], categories: [], page: 1, total: 0, limit: 12, categoryId: '', keyword: '' };
+let homeState = { albums: [], categories: [], page: 1, total: 0, limit: 12, categoryId: '', keyword: '', abAssignments: {} };
 
 function renderHomePage() {
     return `
@@ -80,9 +80,17 @@ async function loadHomeAlbums() {
             return;
         }
 
+        await processAbExperiments();
+
         let html = '<div class="albums-grid">';
         homeState.albums.forEach(album => {
-            const coverUrl = album.cover_image_url ? getImageUrl(album.cover_image_url) : getPlaceholderImage();
+            let coverUrl = album.cover_image_url ? getImageUrl(album.cover_image_url) : getPlaceholderImage();
+            const assignment = homeState.abAssignments[album.id];
+
+            if (assignment) {
+                coverUrl = assignment.cover_image_url ? getImageUrl(assignment.cover_image_url) : getPlaceholderImage();
+            }
+
             const levelBadge = album.min_level > 0
                 ? `<span class="album-card-lock">&#128274; 会员专属</span>` : '';
             const pwdBadge = album.has_password
@@ -109,11 +117,55 @@ async function loadHomeAlbums() {
         html += '</div>';
         listEl.innerHTML = html;
 
+        reportAbExposures();
+
         if (pagEl) {
             pagEl.innerHTML = renderPagination(homeState.total, homeState.page, homeState.limit, 'goHomePage');
         }
     } catch (e) {
         listEl.innerHTML = renderEmpty('加载失败，请稍后重试');
+    }
+}
+
+async function processAbExperiments() {
+    const albums = homeState.albums.filter(a => a.ab_experiment);
+    if (albums.length === 0) return;
+
+    const fp = getVisitorFingerprint();
+
+    for (const album of albums) {
+        const exp = album.ab_experiment;
+        const cached = getAbAssignment(album.id);
+        if (cached && cached.experiment_id === exp.id) {
+            homeState.abAssignments[album.id] = cached;
+            continue;
+        }
+
+        const variant = getAbVariant(album.id);
+        const coverImageUrl = variant === 'a' ? exp.cover_a_image_url : exp.cover_b_image_url;
+
+        const assignment = {
+            experiment_id: exp.id,
+            variant: variant,
+            cover_image_url: coverImageUrl
+        };
+
+        homeState.abAssignments[album.id] = assignment;
+        setAbAssignment(album.id, assignment);
+    }
+}
+
+function reportAbExposures() {
+    const fp = getVisitorFingerprint();
+    for (const album of homeState.albums) {
+        const assignment = homeState.abAssignments[album.id];
+        if (!assignment) continue;
+
+        api.public.abExposure({
+            experiment_id: assignment.experiment_id,
+            fingerprint: fp,
+            variant: assignment.variant
+        }).catch(() => {});
     }
 }
 
@@ -124,5 +176,14 @@ function goHomePage(page) {
 }
 
 function viewAlbum(id) {
+    const assignment = homeState.abAssignments[id];
+    if (assignment) {
+        const fp = getVisitorFingerprint();
+        api.public.abClick({
+            experiment_id: assignment.experiment_id,
+            fingerprint: fp,
+            variant: assignment.variant
+        }).catch(() => {});
+    }
     window.location.hash = `#/viewer/${id}`;
 }

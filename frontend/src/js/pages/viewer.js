@@ -147,6 +147,17 @@ function playPageNarration(pageNumber) {
 
 async function initViewerPage(id) {
     viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false, audioManager: null, hasAudio: false };
+
+    const assignment = getAbAssignment(id);
+    if (assignment) {
+        const fp = getVisitorFingerprint();
+        api.public.abClick({
+            experiment_id: assignment.experiment_id,
+            fingerprint: fp,
+            variant: assignment.variant
+        }).catch(() => {});
+    }
+
     try {
         const res = await api.public.albumDetail(id);
         if (res.data.need_password) {
