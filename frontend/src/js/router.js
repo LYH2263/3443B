@@ -54,6 +54,11 @@ async function handleRoute() {
         window._viewerAudioCleanup = null;
     }
 
+    if (window._viewerInteractionsCleanup) {
+        window._viewerInteractionsCleanup();
+        window._viewerInteractionsCleanup = null;
+    }
+
     if (window._bigScreenCleanup) {
         window._bigScreenCleanup();
         window._bigScreenCleanup = null;

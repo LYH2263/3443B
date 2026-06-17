@@ -2560,3 +2560,423 @@ body.fullscreen-page #page-content {
 body.fullscreen-page #toast-container {
     z-index: 99999;
 }
+
+/* ==================== Viewer Help Button ==================== */
+.viewer-help-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--white);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    font-family: inherit;
+    margin-left: 8px;
+}
+
+.viewer-help-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.viewer-help-btn:active {
+    transform: scale(0.95);
+}
+
+/* ==================== Viewer Jump Hint ==================== */
+.viewer-jump-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: var(--white);
+    padding: 16px 28px;
+    border-radius: var(--radius-lg);
+    font-size: 18px;
+    font-weight: 500;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-xl);
+    animation: fadeIn 0.2s ease;
+}
+
+/* ==================== Viewer Guide Overlay ==================== */
+.viewer-guide-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.viewer-guide-overlay.show {
+    opacity: 1;
+}
+
+.viewer-guide-content {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: scaleIn 0.25s ease;
+    position: relative;
+    padding: 32px;
+}
+
+.viewer-guide-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--gray-500);
+    font-size: 20px;
+    transition: var(--transition);
+    line-height: 1;
+}
+
+.viewer-guide-close:hover {
+    background: var(--gray-200);
+    color: var(--gray-700);
+}
+
+.viewer-guide-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+}
+
+.viewer-guide-subtitle {
+    font-size: 14px;
+    color: var(--gray-500);
+    margin-bottom: 28px;
+}
+
+.viewer-guide-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.viewer-guide-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    transition: var(--transition);
+}
+
+.viewer-guide-item:hover {
+    background: var(--primary-50);
+}
+
+.viewer-guide-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    line-height: 1.2;
+}
+
+.viewer-guide-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.viewer-guide-text strong {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.viewer-guide-text span {
+    font-size: 12px;
+    color: var(--gray-500);
+}
+
+.viewer-guide-tip {
+    text-align: center;
+    font-size: 13px;
+    color: var(--gray-600);
+    padding: 12px;
+    background: var(--primary-50);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+}
+
+.viewer-guide-tip kbd {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--white);
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    color: var(--gray-700);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.viewer-guide-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.viewer-guide-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--gray-600);
+    cursor: pointer;
+    user-select: none;
+}
+
+.viewer-guide-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+/* ==================== Keyboard Help Panel ==================== */
+.keyboard-help-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.keyboard-help-overlay.show {
+    opacity: 1;
+}
+
+.keyboard-help-content {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    width: 100%;
+    max-width: 640px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: scaleIn 0.25s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.keyboard-help-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--gray-200);
+    flex-shrink: 0;
+}
+
+.keyboard-help-header h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.keyboard-help-body {
+    padding: 24px 28px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.keyboard-help-group {
+    margin-bottom: 28px;
+}
+
+.keyboard-help-group:last-child {
+    margin-bottom: 0;
+}
+
+.keyboard-help-category {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary-100);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.keyboard-help-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.keyboard-help-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    transition: var(--transition);
+}
+
+.keyboard-help-item:hover {
+    background: var(--gray-100);
+}
+
+.keyboard-help-keys {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.keyboard-help-keys kbd {
+    display: inline-block;
+    padding: 4px 10px;
+    background: var(--white);
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-700);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+    min-width: 28px;
+    text-align: center;
+}
+
+.keyboard-help-desc {
+    font-size: 14px;
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+.keyboard-help-footer {
+    padding: 16px 28px;
+    border-top: 1px solid var(--gray-200);
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.keyboard-help-footer .viewer-guide-tip {
+    margin-bottom: 0;
+}
+
+/* ==================== Viewer Responsive ==================== */
+@media (max-width: 768px) {
+    .viewer-guide-content {
+        padding: 24px 20px;
+    }
+
+    .viewer-guide-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .viewer-guide-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .viewer-guide-checkbox {
+        justify-content: center;
+    }
+
+    .keyboard-help-header {
+        padding: 20px;
+    }
+
+    .keyboard-help-body {
+        padding: 20px;
+    }
+
+    .keyboard-help-footer {
+        padding: 14px 20px;
+    }
+
+    .keyboard-help-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .viewer-help-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .viewer-jump-hint {
+        padding: 12px 20px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .viewer-guide-title {
+        font-size: 20px;
+    }
+
+    .keyboard-help-content {
+        margin: 10px;
+        border-radius: var(--radius-lg);
+    }
+
+    .keyboard-help-keys kbd {
+        padding: 3px 8px;
+        font-size: 11px;
+        min-width: 24px;
+    }
+
+    .keyboard-help-desc {
+        font-size: 13px;
+    }
+}
+
+/* ==================== Fullscreen Viewer Adjustments ==================== */
+.viewer-page:fullscreen {
+    background: var(--gray-900);
+}
+
+.viewer-page:fullscreen .viewer-container {
+    padding: 40px;
+}
+
+.viewer-page:fullscreen #flipbook-wrapper {
+    max-width: 95vw;
+    max-height: 85vh;
+}

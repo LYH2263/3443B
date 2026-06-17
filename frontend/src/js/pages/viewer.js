@@ -1,14 +1,23 @@
-let viewerState = { album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false, audioManager: null, hasAudio: false, recommendations: [], comments: [], commentsPage: 1, commentsLimit: 10, commentsSort: 'time', commentsTotal: 0, commentsTotalCount: 0, commentsLoading: false, replyingTo: null };
+let viewerState = {
+    album: null, pages: [], currentPage: 1, needPassword: false, flipbookReady: false,
+    audioManager: null, hasAudio: false, recommendations: [], comments: [],
+    commentsPage: 1, commentsLimit: 10, commentsSort: 'time', commentsTotal: 0,
+    commentsTotalCount: 0, commentsLoading: false, replyingTo: null,
+    jumpPageBuffer: '', jumpPageTimeout: null, isFullscreen: false,
+    zoomLevel: 1, gestureStartX: 0, gestureStartY: 0, gestureStartTime: 0,
+    lastTapTime: 0, isDraggingTurnJs: false, keyboardHandlersBound: false,
+    gestureHandlersBound: false
+};
 
 function renderViewerPage(id) {
     return `
-        <div class="viewer-page">
+        <div class="viewer-page" id="viewer-page-root">
             <div class="viewer-header">
                 <button class="viewer-back" onclick="window.location.hash='#/'">&#8592; 返回画册列表</button>
                 <h2 id="viewer-title">加载中...</h2>
                 <div style="width:80px"></div>
             </div>
-            <div class="viewer-container" id="viewer-container">
+            <div class="viewer-container" id="viewer-container" tabindex="0" aria-label="画册阅读区域，使用键盘左右方向键翻页">
                 <div class="viewer-bg" id="viewer-bg"></div>
                 <div id="flipbook-wrapper">
                     <div id="viewer-loading">${renderLoading()}</div>
@@ -25,12 +34,14 @@ function renderViewerPage(id) {
                         <button class="btn btn-primary" onclick="verifyAlbumPassword(${id})" style="width:100%">验证密码</button>
                     </div>
                 </div>
+                <div class="viewer-jump-hint" id="viewer-jump-hint" style="display:none"></div>
             </div>
             <div class="viewer-controls" id="viewer-controls" style="display:none">
-                <button onclick="flipPrev()">&#9664; 上一页</button>
-                <span class="page-indicator" id="page-indicator">1 / 1</span>
-                <button onclick="flipNext()">下一页 &#9654;</button>
-                <button onclick="toggleFullscreen()" style="margin-left:16px" title="全屏">&#9974;</button>
+                <button onclick="flipPrev()" aria-label="上一页">&#9664; 上一页</button>
+                <span class="page-indicator" id="page-indicator" tabindex="0" aria-live="polite">1 / 1</span>
+                <button onclick="flipNext()" aria-label="下一页">下一页 &#9654;</button>
+                <button onclick="toggleFullscreen()" style="margin-left:16px" title="全屏 (F)" aria-label="全屏切换">&#9974;</button>
+                <button class="viewer-help-btn" onclick="showKeyboardHelpPanel()" title="快捷键帮助 (?)" aria-label="显示快捷键帮助">?</button>
             </div>
             <div id="audio-control" class="audio-control" style="display:none">
                 <button id="audio-mute-btn" class="audio-mute-btn" onclick="toggleAudioMute()" title="静音/播放">
@@ -85,9 +96,13 @@ function setupViewerAudio(data) {
     if (window._viewerAudioCleanup) {
         window._viewerAudioCleanup();
     }
+    if (window._viewerInteractionsCleanup) {
+        window._viewerInteractionsCleanup();
+    }
     
     viewerState.audioManager = new AudioManager();
     window._viewerAudioCleanup = initViewerAudioCleanup;
+    window._viewerInteractionsCleanup = cleanupViewerInteractions;
     
     const hasBgm = data.album.bgm_audio_url && data.album.bgm_enabled;
     const hasNarration = viewerState.pages.some(p => p.narration_audio_url);
@@ -142,6 +157,7 @@ function setupViewerAudio(data) {
 
     setTimeout(() => {
         initFlipbook();
+        initViewerInteractions();
     }, 100);
 }
 
@@ -765,4 +781,472 @@ function switchCommentSort(sort) {
     });
 
     loadComments(viewerState.album.id, 1);
+}
+
+function isInputFocused() {
+    const active = document.activeElement;
+    if (!active) return false;
+    const tag = active.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    if (active.isContentEditable) return true;
+    return false;
+}
+
+function handleViewerKeydown(event) {
+    if (isInputFocused()) return;
+    if (!viewerState.flipbookReady) return;
+
+    const key = event.key;
+    const totalPages = $('#flipbook').turn('pages');
+
+    switch (key) {
+        case 'ArrowLeft':
+        case 'PageUp':
+            event.preventDefault();
+            flipPrev();
+            announcePageChange();
+            break;
+
+        case 'ArrowRight':
+        case ' ':
+        case 'PageDown':
+            event.preventDefault();
+            flipNext();
+            announcePageChange();
+            break;
+
+        case 'Home':
+            event.preventDefault();
+            jumpToPage(1);
+            break;
+
+        case 'End':
+            event.preventDefault();
+            jumpToPage(totalPages);
+            break;
+
+        case 'f':
+        case 'F':
+            event.preventDefault();
+            toggleFullscreen();
+            break;
+
+        case 'Escape':
+            event.preventDefault();
+            if (viewerState.isFullscreen) {
+                document.exitFullscreen().catch(() => {});
+            } else if (isKeyboardHelpPanelOpen()) {
+                hideKeyboardHelpPanel();
+            } else if (isViewerGuideVisible()) {
+                hideViewerGuide();
+            }
+            break;
+
+        case '?':
+        case '/':
+            event.preventDefault();
+            toggleKeyboardHelpPanel();
+            break;
+
+        case 'Enter':
+            if (viewerState.jumpPageBuffer) {
+                event.preventDefault();
+                const targetPage = parseInt(viewerState.jumpPageBuffer, 10);
+                if (!isNaN(targetPage)) {
+                    jumpToPage(targetPage);
+                }
+                clearJumpPageBuffer();
+            }
+            break;
+
+        default:
+            if (/^[0-9]$/.test(key)) {
+                handleJumpPageInput(key);
+            }
+            break;
+    }
+}
+
+function handleJumpPageInput(digit) {
+    if (viewerState.jumpPageTimeout) {
+        clearTimeout(viewerState.jumpPageTimeout);
+    }
+    viewerState.jumpPageBuffer += digit;
+    showJumpPageHint(viewerState.jumpPageBuffer);
+    viewerState.jumpPageTimeout = setTimeout(() => {
+        clearJumpPageBuffer();
+    }, 2000);
+}
+
+function clearJumpPageBuffer() {
+    viewerState.jumpPageBuffer = '';
+    if (viewerState.jumpPageTimeout) {
+        clearTimeout(viewerState.jumpPageTimeout);
+        viewerState.jumpPageTimeout = null;
+    }
+    hideJumpPageHint();
+}
+
+function showJumpPageHint(text) {
+    const hint = document.getElementById('viewer-jump-hint');
+    if (hint) {
+        hint.textContent = `跳转到第 ${text} 页 (按 Enter 确认)`;
+        hint.style.display = 'block';
+    }
+}
+
+function hideJumpPageHint() {
+    const hint = document.getElementById('viewer-jump-hint');
+    if (hint) {
+        hint.style.display = 'none';
+    }
+}
+
+function jumpToPage(pageNum) {
+    if (!viewerState.flipbookReady) return;
+    const totalPages = $('#flipbook').turn('pages');
+    const clamped = Math.max(1, Math.min(totalPages, pageNum));
+    if (clamped !== pageNum) {
+        showToast(`页码超出范围，已跳转至第 ${clamped} 页`, 'warning');
+    }
+    $('#flipbook').turn('page', clamped);
+    announcePageChange();
+}
+
+function announcePageChange() {
+    const indicator = document.getElementById('page-indicator');
+    if (indicator && 'ariaLive' in indicator) {
+        indicator.textContent = indicator.textContent;
+    }
+}
+
+function bindKeyboardHandlers() {
+    if (viewerState.keyboardHandlersBound) return;
+    document.addEventListener('keydown', handleViewerKeydown);
+    viewerState.keyboardHandlersBound = true;
+}
+
+function unbindKeyboardHandlers() {
+    if (!viewerState.keyboardHandlersBound) return;
+    document.removeEventListener('keydown', handleViewerKeydown);
+    viewerState.keyboardHandlersBound = false;
+    clearJumpPageBuffer();
+}
+
+function handleTouchStart(event) {
+    if (!viewerState.flipbookReady) return;
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    viewerState.gestureStartX = touch.clientX;
+    viewerState.gestureStartY = touch.clientY;
+    viewerState.gestureStartTime = Date.now();
+    viewerState.isDraggingTurnJs = false;
+}
+
+function handleTouchMove(event) {
+    if (!viewerState.flipbookReady) return;
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const deltaX = Math.abs(touch.clientX - viewerState.gestureStartX);
+    const deltaY = Math.abs(touch.clientY - viewerState.gestureStartY);
+    if (deltaX > 10 && deltaX > deltaY) {
+        viewerState.isDraggingTurnJs = true;
+    }
+}
+
+function handleTouchEnd(event) {
+    if (!viewerState.flipbookReady) return;
+    if (event.changedTouches.length !== 1) return;
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - viewerState.gestureStartX;
+    const deltaY = touch.clientY - viewerState.gestureStartY;
+    const deltaTime = Date.now() - viewerState.gestureStartTime;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    if (deltaTime < 300 && absX < 10 && absY < 10) {
+        handleDoubleTap(touch.clientX, touch.clientY);
+        return;
+    }
+
+    if (viewerState.isDraggingTurnJs) return;
+
+    const swipeThreshold = 50;
+    const swipeTimeThreshold = 500;
+
+    if (deltaTime < swipeTimeThreshold) {
+        if (absX > absY && absX > swipeThreshold) {
+            if (deltaX < 0) {
+                flipNext();
+                announcePageChange();
+            } else {
+                flipPrev();
+                announcePageChange();
+            }
+        } else if (absY > absX && absY > swipeThreshold && deltaY < 0) {
+            showToast('缩略图面板功能开发中', 'info');
+        }
+    }
+}
+
+function handleDoubleTap(x, y) {
+    const now = Date.now();
+    if (now - viewerState.lastTapTime < 300) {
+        toggleViewerZoom();
+        viewerState.lastTapTime = 0;
+    } else {
+        viewerState.lastTapTime = now;
+    }
+}
+
+function toggleViewerZoom() {
+    const wrapper = document.getElementById('flipbook-wrapper');
+    if (!wrapper) return;
+    if (viewerState.zoomLevel === 1) {
+        viewerState.zoomLevel = 2;
+        wrapper.style.transform = 'scale(2)';
+        wrapper.style.transformOrigin = 'center center';
+    } else {
+        viewerState.zoomLevel = 1;
+        wrapper.style.transform = 'scale(1)';
+    }
+    wrapper.style.transition = 'transform 0.3s ease';
+}
+
+function bindGestureHandlers() {
+    if (viewerState.gestureHandlersBound) return;
+    const container = document.getElementById('viewer-container');
+    if (!container) return;
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+    viewerState.gestureHandlersBound = true;
+}
+
+function unbindGestureHandlers() {
+    if (!viewerState.gestureHandlersBound) return;
+    const container = document.getElementById('viewer-container');
+    if (container) {
+        container.removeEventListener('touchstart', handleTouchStart);
+        container.removeEventListener('touchmove', handleTouchMove);
+        container.removeEventListener('touchend', handleTouchEnd);
+    }
+    viewerState.gestureHandlersBound = false;
+}
+
+function handleFullscreenChange() {
+    viewerState.isFullscreen = !!document.fullscreenElement;
+}
+
+function bindFullscreenHandler() {
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+}
+
+function isViewerGuideDismissed() {
+    try {
+        return localStorage.getItem('flipbook_viewer_guide_dismissed') === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+function dismissViewerGuideForever() {
+    try {
+        localStorage.setItem('flipbook_viewer_guide_dismissed', 'true');
+    } catch (e) {}
+}
+
+function showViewerGuide() {
+    if (isViewerGuideDismissed()) return;
+    const container = document.getElementById('modal-container');
+    if (!container) return;
+    container.innerHTML = `
+        <div class="viewer-guide-overlay" id="viewer-guide-overlay" role="dialog" aria-modal="true" aria-labelledby="viewer-guide-title">
+            <div class="viewer-guide-content" onclick="event.stopPropagation()">
+                <button class="viewer-guide-close" onclick="hideViewerGuide()" aria-label="关闭引导">&times;</button>
+                <h3 id="viewer-guide-title" class="viewer-guide-title">&#128075; 欢迎使用翻页阅读器</h3>
+                <p class="viewer-guide-subtitle">掌握以下快捷操作，获得更流畅的阅读体验</p>
+                <div class="viewer-guide-grid">
+                    <div class="viewer-guide-item">
+                        <div class="viewer-guide-icon">&#9001; &#9002;</div>
+                        <div class="viewer-guide-text">
+                            <strong>键盘翻页</strong>
+                            <span>← → 或 空格键</span>
+                        </div>
+                    </div>
+                    <div class="viewer-guide-item">
+                        <div class="viewer-guide-icon">&#128269;</div>
+                        <div class="viewer-guide-text">
+                            <strong>数字跳页</strong>
+                            <span>输入页码 + Enter</span>
+                        </div>
+                    </div>
+                    <div class="viewer-guide-item">
+                        <div class="viewer-guide-icon">&#128470;</div>
+                        <div class="viewer-guide-text">
+                            <strong>全屏模式</strong>
+                            <span>按 F 键切换</span>
+                        </div>
+                    </div>
+                    <div class="viewer-guide-item">
+                        <div class="viewer-guide-icon">&#128073;&#128072;</div>
+                        <div class="viewer-guide-text">
+                            <strong>触屏手势</strong>
+                            <span>左右滑动翻页</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="viewer-guide-tip">按 <kbd>?</kbd> 键随时查看完整快捷键列表</p>
+                <div class="viewer-guide-actions">
+                    <label class="viewer-guide-checkbox">
+                        <input type="checkbox" id="viewer-guide-dont-show">
+                        <span>不再提示</span>
+                    </label>
+                    <button class="btn btn-primary" onclick="confirmViewerGuide()">开始阅读</button>
+                </div>
+            </div>
+        </div>
+    `;
+    setTimeout(() => {
+        const overlay = document.getElementById('viewer-guide-overlay');
+        if (overlay) overlay.classList.add('show');
+    }, 50);
+}
+
+function hideViewerGuide() {
+    const overlay = document.getElementById('viewer-guide-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    setTimeout(() => {
+        const container = document.getElementById('modal-container');
+        if (container && container.querySelector('#viewer-guide-overlay')) {
+            container.innerHTML = '';
+        }
+    }, 200);
+}
+
+function isViewerGuideVisible() {
+    return !!document.getElementById('viewer-guide-overlay');
+}
+
+function confirmViewerGuide() {
+    const dontShow = document.getElementById('viewer-guide-dont-show');
+    if (dontShow && dontShow.checked) {
+        dismissViewerGuideForever();
+    }
+    hideViewerGuide();
+}
+
+function getKeyboardShortcutsList() {
+    return [
+        {
+            category: '翻页操作',
+            items: [
+                { keys: ['←', 'PageUp'], desc: '上一页' },
+                { keys: ['→', 'Space', 'PageDown'], desc: '下一页' },
+                { keys: ['Home'], desc: '跳转到第一页' },
+                { keys: ['End'], desc: '跳转到最后一页' },
+                { keys: ['数字 + Enter'], desc: '跳转到指定页码' }
+            ]
+        },
+        {
+            category: '视图控制',
+            items: [
+                { keys: ['F'], desc: '全屏 / 退出全屏' },
+                { keys: ['Esc'], desc: '退出全屏 / 关闭面板' },
+                { keys: ['?'], desc: '显示 / 隐藏快捷键帮助' }
+            ]
+        },
+        {
+            category: '触屏手势（移动端）',
+            items: [
+                { keys: ['← 滑动'], desc: '下一页' },
+                { keys: ['→ 滑动'], desc: '上一页' },
+                { keys: ['双击'], desc: '放大 / 复位' },
+                { keys: ['↑ 上滑'], desc: '呼出缩略图面板' }
+            ]
+        }
+    ];
+}
+
+function formatKeyCombo(keys) {
+    return keys.map(k => `<kbd>${escapeHtml(k)}</kbd>`).join(' + ');
+}
+
+function showKeyboardHelpPanel() {
+    const container = document.getElementById('modal-container');
+    if (!container) return;
+    const shortcuts = getKeyboardShortcutsList();
+    container.innerHTML = `
+        <div class="keyboard-help-overlay" id="keyboard-help-overlay" role="dialog" aria-modal="true" aria-labelledby="keyboard-help-title" onclick="hideKeyboardHelpPanel()">
+            <div class="keyboard-help-content" onclick="event.stopPropagation()">
+                <div class="keyboard-help-header">
+                    <h3 id="keyboard-help-title">&#9000; 快捷键帮助</h3>
+                    <button class="viewer-guide-close" onclick="hideKeyboardHelpPanel()" aria-label="关闭帮助">&times;</button>
+                </div>
+                <div class="keyboard-help-body">
+                    ${shortcuts.map(group => `
+                        <div class="keyboard-help-group">
+                            <h4 class="keyboard-help-category">${escapeHtml(group.category)}</h4>
+                            <div class="keyboard-help-items">
+                                ${group.items.map(item => `
+                                    <div class="keyboard-help-item">
+                                        <div class="keyboard-help-keys">${formatKeyCombo(item.keys)}</div>
+                                        <div class="keyboard-help-desc">${escapeHtml(item.desc)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="keyboard-help-footer">
+                    <p class="viewer-guide-tip">按 <kbd>Esc</kbd> 或 <kbd>?</kbd> 关闭此面板</p>
+                </div>
+            </div>
+        </div>
+    `;
+    setTimeout(() => {
+        const overlay = document.getElementById('keyboard-help-overlay');
+        if (overlay) overlay.classList.add('show');
+    }, 50);
+}
+
+function hideKeyboardHelpPanel() {
+    const overlay = document.getElementById('keyboard-help-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    setTimeout(() => {
+        const container = document.getElementById('modal-container');
+        if (container && container.querySelector('#keyboard-help-overlay')) {
+            container.innerHTML = '';
+        }
+    }, 200);
+}
+
+function toggleKeyboardHelpPanel() {
+    if (isKeyboardHelpPanelOpen()) {
+        hideKeyboardHelpPanel();
+    } else {
+        showKeyboardHelpPanel();
+    }
+}
+
+function isKeyboardHelpPanelOpen() {
+    return !!document.getElementById('keyboard-help-overlay');
+}
+
+function initViewerInteractions() {
+    bindKeyboardHandlers();
+    bindGestureHandlers();
+    bindFullscreenHandler();
+    setTimeout(() => {
+        showViewerGuide();
+    }, 800);
+}
+
+function cleanupViewerInteractions() {
+    unbindKeyboardHandlers();
+    unbindGestureHandlers();
+    clearJumpPageBuffer();
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
 }
