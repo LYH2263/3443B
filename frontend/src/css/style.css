@@ -2980,3 +2980,441 @@ body.fullscreen-page #toast-container {
     max-width: 95vw;
     max-height: 85vh;
 }
+
+/* ==================== PDF Export Modal ==================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header {
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.modal-header h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0;
+}
+
+.modal-close-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--gray-100);
+    color: var(--gray-500);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 400;
+    transition: var(--transition);
+    line-height: 1;
+}
+
+.modal-close-btn:hover {
+    background: var(--gray-200);
+    color: var(--gray-700);
+}
+
+.modal-body {
+    padding: 24px 28px;
+    overflow-y: auto;
+    max-height: calc(90vh - 140px);
+}
+
+.modal-footer {
+    padding: 16px 28px;
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+.pdf-export-album-title {
+    font-size: 14px;
+    color: var(--gray-500);
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+}
+
+.pdf-export-album-title strong {
+    color: var(--gray-900);
+    font-weight: 600;
+}
+
+.pdf-form-group {
+    margin-bottom: 20px;
+}
+
+.pdf-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.pdf-form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 10px;
+}
+
+.pdf-page-size-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.pdf-page-size-option {
+    position: relative;
+    cursor: pointer;
+}
+
+.pdf-page-size-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.pdf-page-size-option-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    transition: var(--transition);
+    background: var(--white);
+}
+
+.pdf-page-size-option input:checked + .pdf-page-size-option-card {
+    border-color: var(--primary);
+    background: var(--primary-50);
+}
+
+.pdf-page-size-option-icon {
+    font-size: 28px;
+    margin-bottom: 6px;
+}
+
+.pdf-page-size-option-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.pdf-page-size-option-desc {
+    font-size: 11px;
+    color: var(--gray-400);
+    margin-top: 2px;
+}
+
+.pdf-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pdf-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 12px 16px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    transition: var(--transition);
+}
+
+.pdf-checkbox-item:hover {
+    border-color: var(--primary-200);
+    background: var(--primary-50);
+}
+
+.pdf-checkbox-item input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.pdf-checkbox-item-info {
+    flex: 1;
+}
+
+.pdf-checkbox-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.pdf-checkbox-item-desc {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-top: 2px;
+}
+
+/* PDF Progress */
+.pdf-progress-container {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.pdf-progress-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+}
+
+.pdf-progress-subtitle {
+    font-size: 14px;
+    color: var(--gray-500);
+    margin-bottom: 24px;
+}
+
+.pdf-progress-bar-wrapper {
+    width: 100%;
+    height: 8px;
+    background: var(--gray-200);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.pdf-progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--primary-600));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    min-width: 2px;
+}
+
+.pdf-progress-percent {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+
+.pdf-progress-info {
+    font-size: 13px;
+    color: var(--gray-500);
+}
+
+.pdf-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--primary-100);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.pdf-success-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--success);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 auto 20px;
+}
+
+.pdf-error-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--error);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 auto 20px;
+}
+
+.pdf-success-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--success);
+    margin-bottom: 8px;
+}
+
+.pdf-error-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--error);
+    margin-bottom: 8px;
+}
+
+.pdf-success-message {
+    font-size: 14px;
+    color: var(--gray-600);
+    margin-bottom: 20px;
+}
+
+.pdf-error-message {
+    font-size: 14px;
+    color: var(--gray-600);
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: var(--error-50);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--error);
+    text-align: left;
+}
+
+.pdf-file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--primary-50);
+    border: 1px solid var(--primary-100);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.pdf-file-icon {
+    font-size: 36px;
+    flex-shrink: 0;
+}
+
+.pdf-file-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.pdf-file-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-900);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pdf-file-meta {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-top: 4px;
+}
+
+.pdf-action-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.pdf-action-buttons .btn {
+    flex: 1;
+    justify-content: center;
+}
+
+#viewer-export-pdf-btn {
+    width: auto;
+    padding: 0 14px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--white);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 18px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: var(--transition);
+    font-family: inherit;
+    margin-left: 8px;
+}
+
+#viewer-export-pdf-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+#viewer-export-pdf-btn:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+        max-height: 95vh;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .pdf-page-size-options {
+        grid-template-columns: 1fr;
+    }
+
+    #viewer-export-pdf-btn {
+        padding: 0 10px;
+        font-size: 12px;
+    }
+}

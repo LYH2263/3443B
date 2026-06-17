@@ -11,7 +11,9 @@
         "topthink/think-filesystem": "^1.0",
         "endroid/qr-code": "^4.0",
         "firebase/php-jwt": "^6.0",
-        "intervention/image": "^2.7"
+        "intervention/image": "^2.7",
+        "mpdf/mpdf": "^8.2",
+        "psr/http-message": "^1.0"
     },
     "autoload": {
         "psr-4": {

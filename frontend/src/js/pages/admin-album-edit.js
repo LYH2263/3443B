@@ -318,6 +318,19 @@ function renderAlbumEditForm(id) {
                 </div>
                 ` : ''}
 
+                ${id ? `
+                <div class="card" style="margin-bottom:24px">
+                    <div class="card-body">
+                        <button class="btn btn-secondary btn-lg" onclick="openPdfExportModal(${id}, '${escapeHtml(editAlbumState.album?.title || '')}')" style="width:100%" ${editAlbumState.pages.length === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
+                            &#128196; 导出 PDF
+                        </button>
+                        <p style="font-size:12px;color:var(--gray-400);margin-top:8px;text-align:center">
+                            ${editAlbumState.pages.length === 0 ? '请先添加页面后再导出' : `共 ${editAlbumState.pages.length} 页，预计导出时间 ${Math.max(5, Math.ceil(editAlbumState.pages.length * 0.5))} 秒`}
+                        </p>
+                    </div>
+                </div>
+                ` : ''}
+
                 <div class="card">
                     <div class="card-body">
                         <button class="btn btn-primary btn-lg" onclick="saveAlbum(${id || 'null'})" style="width:100%" id="save-album-btn">

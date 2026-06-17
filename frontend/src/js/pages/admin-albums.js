@@ -97,6 +97,7 @@ async function loadAdminAlbums() {
                         <div class="table-actions">
                             <a href="#/admin/albums/edit/${album.id}" class="btn btn-sm btn-secondary" title="编辑">&#9998;</a>
                             <button class="btn btn-sm btn-secondary" onclick="previewAlbum(${album.id})" title="预览">&#128065;</button>
+                            <button class="btn btn-sm btn-primary" onclick="openPdfExportModal(${album.id}, '${escapeHtml(album.title)}')" title="导出PDF" ${album.page_count === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>&#128196;</button>
                             <button class="btn btn-sm btn-danger" onclick="deleteAdminAlbum(${album.id},'${escapeHtml(album.title)}')" title="删除">&#128465;</button>
                         </div>
                     </td>

@@ -64,6 +64,15 @@ Route::group('api/public', function () {
     Route::delete('comments/:id', 'CommentController@delete')->pattern(['id' => '\d+']);
 })->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AuthMiddleware::class]);
 
+// PDF Export routes (require login)
+Route::group('api/pdf', function () {
+    Route::post('export', 'PdfExportController@export');
+    Route::get('progress/:id', 'PdfExportController@progress')->pattern(['id' => '\d+']);
+    Route::get('download/:id', 'PdfExportController@download')->pattern(['id' => '\d+']);
+    Route::post('retry/:id', 'PdfExportController@retry')->pattern(['id' => '\d+']);
+    Route::get('my-tasks', 'PdfExportController@myTasks');
+})->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AuthMiddleware::class]);
+
 // Big screen data (public, for display)
 Route::get('api/bigscreen', 'app\controller\BigScreenController@index')
     ->middleware(\app\middleware\CorsMiddleware::class);
@@ -191,4 +200,8 @@ Route::group('api/admin', function () {
     Route::post('pending-contents/:id/reject', 'PendingContentController@reject')->pattern(['id' => '\d+']);
     Route::post('pending-contents/batch-approve', 'PendingContentController@batchApprove');
     Route::post('pending-contents/batch-reject', 'PendingContentController@batchReject');
+
+    // PDF Export Management
+    Route::get('pdf-exports', 'PdfExportController@adminList');
+    Route::post('pdf-exports/cleanup', 'PdfExportController@adminCleanup');
 })->prefix('app\\controller\\')->middleware([\app\middleware\CorsMiddleware::class, \app\middleware\AdminMiddleware::class]);

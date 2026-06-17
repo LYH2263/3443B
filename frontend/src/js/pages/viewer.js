@@ -41,6 +41,7 @@ function renderViewerPage(id) {
                 <span class="page-indicator" id="page-indicator" tabindex="0" aria-live="polite">1 / 1</span>
                 <button onclick="flipNext()" aria-label="下一页">下一页 &#9654;</button>
                 <button onclick="toggleFullscreen()" style="margin-left:16px" title="全屏 (F)" aria-label="全屏切换">&#9974;</button>
+                <button id="viewer-export-pdf-btn" onclick="exportViewerPdf()" style="display:none" title="导出PDF" aria-label="导出PDF">&#128196; PDF</button>
                 <button class="viewer-help-btn" onclick="showKeyboardHelpPanel()" title="快捷键帮助 (?)" aria-label="显示快捷键帮助">?</button>
             </div>
             <div id="audio-control" class="audio-control" style="display:none">
@@ -152,6 +153,13 @@ function setupViewerAudio(data) {
     
     document.getElementById('viewer-controls').style.display = 'flex';
     
+    if (checkPdfExportPermission()) {
+        const exportBtn = document.getElementById('viewer-export-pdf-btn');
+        if (exportBtn) {
+            exportBtn.style.display = 'inline-flex';
+        }
+    }
+    
     loadRecommendations(viewerState.album.id);
     initComments(viewerState.album.id);
 
@@ -159,6 +167,29 @@ function setupViewerAudio(data) {
         initFlipbook();
         initViewerInteractions();
     }, 100);
+}
+
+function checkPdfExportPermission() {
+    if (!isLoggedIn()) return false;
+    
+    const user = getUser();
+    if (!user) return false;
+    
+    if (user.role === 'admin') return true;
+    
+    if (viewerState.album && viewerState.album.creator_id && viewerState.album.creator_id === user.id) {
+        return true;
+    }
+    
+    const userLevel = user.level || 0;
+    const minLevel = viewerState.album ? (viewerState.album.min_level || 0) : 0;
+    
+    return userLevel >= minLevel;
+}
+
+function exportViewerPdf() {
+    if (!viewerState.album || !viewerState.album.id) return;
+    openPdfExportModal(viewerState.album.id, viewerState.album.title || '');
 }
 
 function updateAudioMuteIcon() {

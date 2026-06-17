@@ -1,0 +1,26 @@
+-- 画册 PDF 导出任务表
+CREATE TABLE IF NOT EXISTS `pdf_export_tasks` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `album_id` INT UNSIGNED NOT NULL COMMENT '画册ID',
+  `user_id` INT UNSIGNED DEFAULT NULL COMMENT '发起用户ID',
+  `status` ENUM('pending','processing','completed','failed','timeout') NOT NULL DEFAULT 'pending' COMMENT '任务状态',
+  `progress` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '进度 0-100',
+  `total_pages` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '总页数',
+  `processed_pages` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '已处理页数',
+  `page_size` VARCHAR(20) NOT NULL DEFAULT 'a4_portrait' COMMENT '页面尺寸: a4_portrait/a4_landscape/original',
+  `show_header` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否显示页眉',
+  `show_footer` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否显示页脚',
+  `file_path` VARCHAR(500) DEFAULT '' COMMENT '生成的文件路径',
+  `file_size` BIGINT UNSIGNED DEFAULT 0 COMMENT '文件大小(字节)',
+  `error_message` TEXT COMMENT '错误信息',
+  `retry_count` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '重试次数',
+  `expires_at` DATETIME DEFAULT NULL COMMENT '过期时间',
+  `started_at` DATETIME DEFAULT NULL COMMENT '开始处理时间',
+  `completed_at` DATETIME DEFAULT NULL COMMENT '完成时间',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_album` (`album_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='画册PDF导出任务表';

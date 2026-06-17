@@ -249,4 +249,17 @@ const api = {
     },
     bigscreen: () => apiRequest('/bigscreen'),
     init: () => apiRequest('/init'),
+
+    pdf: {
+        export: (data) => apiRequest('/pdf/export', { method: 'POST', body: data }),
+        progress: (id) => apiRequest(`/pdf/progress/${id}`),
+        download: (id) => `${API_BASE}/pdf/download/${id}`,
+        retry: (id) => apiRequest(`/pdf/retry/${id}`, { method: 'POST' }),
+        myTasks: (params) => apiRequest('/pdf/my-tasks?' + new URLSearchParams(params || {})),
+    },
+
+    adminPdf: {
+        list: (params) => apiRequest('/admin/pdf-exports?' + new URLSearchParams(params || {})),
+        cleanup: () => apiRequest('/admin/pdf-exports/cleanup', { method: 'POST' }),
+    },
 };
