@@ -128,7 +128,7 @@ function setupViewerAudio(data) {
     document.getElementById('viewer-loading').style.display = 'none';
     
     if (data.album.background_image_url) {
-        document.getElementById('viewer-bg').style.backgroundImage = `url(${getImageUrl(data.album.background_image_url})`;
+        document.getElementById('viewer-bg').style.backgroundImage = `url(${getImageUrl(data.album.background_image_url)})`;
     }
     
     if (viewerState.pages.length === 0) {

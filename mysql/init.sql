@@ -231,3 +231,170 @@ INSERT INTO `album_tag` (`album_id`, `tag_id`) VALUES
 (1, 1), (1, 2),
 (2, 3), (2, 4),
 (3, 5), (3, 6);
+
+-- 限时分享链接表
+CREATE TABLE IF NOT EXISTS `share_links` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `album_id` INT UNSIGNED NOT NULL COMMENT '画册ID',
+  `token` VARCHAR(64) NOT NULL COMMENT '不可猜测的分享token',
+  `expire_at` DATETIME DEFAULT NULL COMMENT '过期时间，NULL表示永久有效',
+  `max_views` INT UNSIGNED DEFAULT 0 COMMENT '最大访问次数，0表示不限',
+  `view_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '已访问次数',
+  `access_code` VARCHAR(50) DEFAULT '' COMMENT '附加访问码，空表示无需',
+  `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态 1有效 0已失效',
+  `creator_id` INT UNSIGNED DEFAULT NULL COMMENT '创建者ID',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_token` (`token`),
+  KEY `idx_album` (`album_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_expire` (`expire_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='限时分享链接表';
+
+-- 评论表
+CREATE TABLE IF NOT EXISTS `comments` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `album_id` INT UNSIGNED NOT NULL COMMENT '画册ID',
+  `user_id` INT UNSIGNED NOT NULL COMMENT '用户ID',
+  `parent_id` INT UNSIGNED DEFAULT NULL COMMENT '父评论ID，顶层为NULL',
+  `reply_to_user_id` INT UNSIGNED DEFAULT NULL COMMENT '回复的目标用户ID',
+  `content` TEXT NOT NULL COMMENT '评论内容',
+  `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态 1正常 0隐藏 2待审核',
+  `is_pinned` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否置顶 0否 1是',
+  `like_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '点赞数',
+  `reply_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '回复数',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_album` (`album_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_parent` (`parent_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_album_status` (`album_id`, `status`),
+  KEY `idx_album_parent` (`album_id`, `parent_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论表';
+
+-- 短链表
+CREATE TABLE IF NOT EXISTS `short_links` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `short_code` VARCHAR(16) NOT NULL COMMENT '短码',
+  `album_id` INT UNSIGNED NOT NULL COMMENT '画册ID',
+  `remark` VARCHAR(200) DEFAULT '' COMMENT '备注（投放渠道）',
+  `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态 1启用 0禁用',
+  `click_count` INT UNSIGNED DEFAULT 0 COMMENT '累计点击数',
+  `last_click_at` DATETIME DEFAULT NULL COMMENT '最近点击时间',
+  `creator_id` INT UNSIGNED DEFAULT NULL COMMENT '创建者ID',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_short_code` (`short_code`),
+  KEY `idx_album` (`album_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_creator` (`creator_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='短链表';
+
+CREATE TABLE IF NOT EXISTS `short_link_clicks` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `short_link_id` BIGINT UNSIGNED NOT NULL COMMENT '短链ID',
+  `short_code` VARCHAR(16) NOT NULL COMMENT '短码',
+  `album_id` INT UNSIGNED NOT NULL COMMENT '画册ID',
+  `ip` VARCHAR(45) DEFAULT '' COMMENT 'IP地址',
+  `user_agent` VARCHAR(500) DEFAULT '' COMMENT 'UserAgent',
+  `referer` VARCHAR(500) DEFAULT '' COMMENT '来源URL',
+  `channel` VARCHAR(100) DEFAULT '' COMMENT '来源渠道',
+  `is_valid` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否有效（去重后）',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_short_link` (`short_link_id`),
+  KEY `idx_short_code` (`short_code`),
+  KEY `idx_album` (`album_id`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_ip_time` (`ip`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='短链点击表';
+
+-- 敏感词与待审内容表
+CREATE TABLE IF NOT EXISTS `sensitive_words` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `word` VARCHAR(200) NOT NULL COMMENT '敏感词',
+  `level` ENUM('forbid','replace','mark') NOT NULL DEFAULT 'forbid' COMMENT '级别：forbid禁止 replace替换为星号 mark标记待审',
+  `category` VARCHAR(50) DEFAULT '' COMMENT '分类',
+  `remark` VARCHAR(500) DEFAULT '' COMMENT '备注',
+  `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态 1启用 0禁用',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_word` (`word`),
+  KEY `idx_level` (`level`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='敏感词库表';
+
+CREATE TABLE IF NOT EXISTS `sensitive_whitelist` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `word` VARCHAR(200) NOT NULL COMMENT '白名单词（不视为敏感词）',
+  `remark` VARCHAR(500) DEFAULT '' COMMENT '备注',
+  `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态 1启用 0禁用',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_word` (`word`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='敏感词白名单表';
+
+CREATE TABLE IF NOT EXISTS `pending_contents` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `content_type` ENUM('album_title','album_description','album_page_title','album_page_description','comment') NOT NULL COMMENT '内容类型',
+  `target_id` INT UNSIGNED NOT NULL COMMENT '关联目标ID（画册ID/页面ID/评论ID）',
+  `field_name` VARCHAR(100) NOT NULL COMMENT '字段名',
+  `original_content` TEXT COMMENT '原始内容',
+  `processed_content` TEXT COMMENT '处理后内容（替换后的）',
+  `matched_words` JSON COMMENT '命中的敏感词列表',
+  `submitter_id` INT UNSIGNED DEFAULT NULL COMMENT '提交者用户ID',
+  `status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending' COMMENT '审核状态：pending待审 approved通过 rejected驳回',
+  `reviewer_id` INT UNSIGNED DEFAULT NULL COMMENT '审核人ID',
+  `reviewed_at` DATETIME DEFAULT NULL COMMENT '审核时间',
+  `review_remark` VARCHAR(500) DEFAULT '' COMMENT '审核备注',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_content_type` (`content_type`),
+  KEY `idx_status` (`status`),
+  KEY `idx_target` (`content_type`, `target_id`),
+  KEY `idx_submitter` (`submitter_id`),
+  KEY `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='待审内容表';
+
+-- PDF 导出任务表
+CREATE TABLE IF NOT EXISTS `pdf_export_tasks` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `album_id` INT UNSIGNED NOT NULL COMMENT '画册ID',
+  `user_id` INT UNSIGNED DEFAULT NULL COMMENT '发起用户ID',
+  `status` ENUM('pending','processing','completed','failed','timeout') NOT NULL DEFAULT 'pending' COMMENT '任务状态',
+  `progress` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '进度 0-100',
+  `total_pages` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '总页数',
+  `processed_pages` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '已处理页数',
+  `page_size` VARCHAR(20) NOT NULL DEFAULT 'a4_portrait' COMMENT '页面尺寸: a4_portrait/a4_landscape/original',
+  `show_header` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否显示页眉',
+  `show_footer` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否显示页脚',
+  `file_path` VARCHAR(500) DEFAULT '' COMMENT '生成的文件路径',
+  `file_size` BIGINT UNSIGNED DEFAULT 0 COMMENT '文件大小(字节)',
+  `error_message` TEXT COMMENT '错误信息',
+  `retry_count` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '重试次数',
+  `expires_at` DATETIME DEFAULT NULL COMMENT '过期时间',
+  `started_at` DATETIME DEFAULT NULL COMMENT '开始处理时间',
+  `completed_at` DATETIME DEFAULT NULL COMMENT '完成时间',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_album` (`album_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='画册PDF导出任务表';
+
+-- 数据大屏性能优化索引
+ALTER TABLE `access_logs` ADD INDEX `idx_created_at` (`created_at`);
+ALTER TABLE `access_logs` ADD INDEX `idx_album_created` (`album_id`, `created_at`);
+ALTER TABLE `albums` ADD INDEX `idx_view_count` (`view_count` DESC);
+
+-- 初始化敏感词示例数据
+INSERT INTO `sensitive_words` (`word`, `level`, `category`, `remark`) VALUES
+('违禁词1', 'forbid', '政治类', '示例敏感词'),
+('违禁词2', 'replace', '广告类', '示例替换词'),
+('敏感测试', 'mark', '其他', '示例标记词');
+
+INSERT INTO `sensitive_whitelist` (`word`, `remark`) VALUES
+('合法词示例', '白名单示例');
